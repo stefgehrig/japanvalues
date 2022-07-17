@@ -1,0 +1,93 @@
+---
+title: "Appendix"
+author: "Plamen Akaliyski, Naoko Taniguchi, Joonha Park, Stefan Gehrig, Raül Tormos"
+documentclass: article
+output:
+  bookdown::pdf_document2:
+    fig_caption: yes
+    latex_engine: xelatex
+    number_sections: yes
+    toc: no
+    toc_depth: 2
+header-includes:
+ \pagenumbering{gobble}
+ \renewcommand{\thefigure}{A\arabic{figure}}
+
+fontsize: 12pt
+geometry: top=0.7in, bottom=0.7in, left=0.7in, right=0.7in
+
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(kableExtra)
+library(dplyr)
+library(gtsummary)
+library(gt)
+knitr::opts_chunk$set(echo = FALSE)
+sum_tab <- readRDS("../results/sum_tab.rds")
+propmod_tab <- readRDS("../results/propmod_tab.rds")
+```
+
+\pagebreak
+
+# Covariate distributions
+
+Figure \@ref(fig:histogr) and Table \@ref(tab:sumtab) show distributions for covariates used during analysis. All statistics are based on the samples that remained after listwise deletion of cases which had missing values in any essential variables, i.e., either in below covariates or in *both* outcome variables EVI and SVI.
+
+\begin{figure}
+\centering
+\includegraphics[width=14cm]{../results/p_balance.png}
+\caption{Relative frequencies of characteristics in the WVS7 and VIC1 samples. Raw data prior to weighting is shown.}
+\label{fig:histogr}
+\end{figure}
+
+\pagebreak
+
+```{r sumtab}
+sum_tab %>% 
+  kable(format = "latex", booktab = TRUE, linesep = "", longtable = TRUE,
+      align = "l", caption = "Summary statistics for respondent characteristics in WVS7, VIC1 and VIC2. Distribution for the weighted samples (propensity weights combined with post-stratification weights) for WVS7 and VIC1 are also presented. For some variables, we show results for the adult population from the Japanse census 2020 for comparison.") %>%
+  kable_styling(font_size = 7, latex_options = "HOLD_position") %>% 
+  row_spec(row = c(5,8,14,22,28,35), bold = TRUE)
+```
+
+\pagebreak
+
+# Propensity score regression model
+
+Table \@ref(tab:propmodtab) shows coefficient estimates and their standard errors from the logistic regression model used for estimation of propensity scores. The outcome variable was whether a respondent was surveyed in WVS7 (coded as 1) or in VIC1 (coded as 0) and the preidcted probabilities were used to contruct inverse probability of treatment weights for the WVS7-VIC1 comparison. Note that the size of estimates for two prefectures (Miyazaki, Tottori) and their uncertainty are extremely large, which is because the WVS7 sample does not include respondents from these two prefectures, which are rather small in terms of population. Hence, the model predicts low propensity scores for the few respondents from those prefectures in the VIC1 sample.
+
+
+```{r propmodtab}
+propmod_tab %>% 
+  slice(1, 80, 78, 79, 2:77, 81:nrow(propmod_tab)) %>% 
+  kable(format = "latex", booktab = TRUE, linesep = c(rep("", nrow(propmod_tab)-8), "\\addlinespace"), 
+        longtable = TRUE, col.names = c("Term", "Estimate", "Standard error"),
+        align = "l", caption = "Estimated coefficients in the logistic regression model for propensity scores.") %>%
+  kable_styling(font_size = 9, latex_options = "HOLD_position") %>% 
+  row_spec(row = c(5,8,14,63,68,75), bold = TRUE)
+```
+
+\pagebreak
+
+# Variation between prefectures
+
+Variation between prefectures in pandemic severity, defined as number of COVID-19 infections, at the time of the VIC survey in May 2020 is shown in Figure \@ref(fig:map).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=15cm]{../results/p_map.png}
+\caption{Cumulative COVID-19 infections in Japanese prefectures per 100,000 until initial VIC1 survey date (May 15, 2020).}
+\label{fig:map}
+\end{figure}
+
+In Figure \@ref(fig:intact), we visualize the estimated effect of pandemic severity on change in societal values. In particular, we show how for an 'typical individual' from WVS7, defined by having the (marginal) median or mode in all covariates, the number of cumulative COVID-19 infections in the prefecture affects change in EVI and SVI, based on our outcome regressions shown in the main text. The difference in slopes displays the interaction effect of both variables (see Fig. 6 in the main text for estimated coefficients of the interaction effect). As should be expected under a well-specified model, the estimated number of infections that a prefecture *will* have at the point in time when the VIC1 survey is conducted (May 2020) is not related to societal values at the point in time when the WVS7 survey is conducted (September 2019), given the variables included in the model. This is indicated by the flat solid line.
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=14cm]{../results/p_predvalues.png}
+\caption{Predicted values for a typical individual as a function of COVID-19 pandemic severity (cumulative infections in the prefecture per 100,000 until the VIC1 survey date) and survey time point. Pointwise 95\% confidence intervals are shown.}
+\label{fig:intact}
+\end{figure}
