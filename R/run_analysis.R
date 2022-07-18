@@ -35,7 +35,7 @@ outcome_EVI         <- c("EVI", "equal_educ", "homosexuality", "abortion", "divo
 outcome_EVI_long    <- c("EVI", "equal_educ", "equal_polit", "equal_job", "homosexuality", "abortion", "divorce")
 outcome_SVI         <- c("SVI", "rel_imp", "rel_person", "nation_pride", "parents_proud", "respect_author")
 outcome             <- as.list(c(outcome_EVI, outcome_SVI))
-outcome_long        <- as.list(c(outcome_EVI, outcome_SVI))
+outcome_long        <- as.list(c(outcome_EVI_long, outcome_SVI))
 names(outcome)      <- unlist(outcome)
 names(outcome_long) <- unlist(outcome_long)
 
@@ -594,8 +594,8 @@ pred_values <- map_dfr(outcome, .id = "outcome", function(x){
                                   paste(c(vars_cont, vars_nom_reg, "age_sq"),
                                         collapse = "+"), sep ="")),
                  data = data,
-                 clusters = prefecture,
                  weights = wgt/mean(wgt),
+                 clusters = prefecture,
                  se_type = "stata")
   
   data_wvs <- data %>% filter(wave == "WVS7")
@@ -674,7 +674,6 @@ mods_psych <- map_dfr(outcome_long, .id = "outcome", function(x){
                                                                   collapse = "+"), sep ="")),
                  data = data,
                  weights = wgt/mean(wgt),
-                 clusters = prefecture, 
                  se_type = "stata"
   )
   
@@ -708,18 +707,6 @@ p_coeff_models3 <- (forestA + plot_layout(widths = c(5/4, 1))) /
 png("results/p_coeff_models3.png", width = 2800, height = 1500, res = 365)
 print(p_coeff_models3)
 dev.off()
-
-# estimate ICC
-lmm <- lmer(
-  distress ~ (1|subject_id),
-  data = df %>% 
-    group_by(subject_id) %>%
-    filter(n()>1) %>%
-    ungroup)
-
-vars <- as_tibble(summary(lmm)$varcor)
-vars$vcov[vars$grp=="subject_id"] / 
-  (vars$vcov[vars$grp=="subject_id"] + vars$vcov[vars$grp=="Residual"]) # 0.5259601
 
 #################################
 #################################
@@ -962,3 +949,15 @@ df %>%
 # distress comparisons between subgroups
 t.test(df$distress[df$participation=="Both W1 and W2"], df$distress[df$participation=="W1 only"]) # p-value = 4.68e-05
 t.test(df$distress[df$participation=="Both W1 and W2"], df$distress[df$participation=="W2 only"]) # p-value = 0.0004897
+
+# estimate ICC of distress between waves for repeated respondents
+lmm <- lmer(
+  distress ~ (1|subject_id),
+  data = df %>% 
+    group_by(subject_id) %>%
+    filter(n()>1) %>%
+    ungroup)
+
+vars <- as_tibble(summary(lmm)$varcor)
+vars$vcov[vars$grp=="subject_id"] / 
+  (vars$vcov[vars$grp=="subject_id"] + vars$vcov[vars$grp=="Residual"]) # 0.5259601
