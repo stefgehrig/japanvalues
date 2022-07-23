@@ -41,9 +41,9 @@ names(outcome_long) <- unlist(outcome_long)
 
 # define covariates for adjustment
 vars_cont     <- c("age", "children", "hhsize")
-vars_nom_pref <- c("gender","education", "prefecture", "townsize", "maritalst", "rel_service")
-vars_nom_reg  <- c("gender","education", "region",     "townsize", "maritalst", "rel_service")
-vars_bfive    <- c(names(df_filt)[grepl("bfive", names(df_filt))], "distress")
+vars_nom_pref <- c("gender","education", "maritalst",  "townsize", "prefecture","rel_service")
+vars_nom_reg  <- c("gender","education", "maritalst",  "townsize", "region",    "rel_service")
+vars_bfive    <- c(names(df)[grepl("bfive", names(df))], "distress")
 vars_psych    <- c(vars_cont, vars_nom_reg, "hhincome", vars_bfive)
 
 ###############################
@@ -119,9 +119,9 @@ p_balance <- df1 %>%
                                        "hhsize",
                                        "gender",
                                        "education",
-                                       "region",
-                                       "townsize",
                                        "maritalst",
+                                       "townsize",
+                                       "region",
                                        "rel_service"
                                      ))) %>%
   mutate(covariate = fct_recode(covariate,
@@ -131,9 +131,10 @@ p_balance <- df1 %>%
                                 "Household size"             = "hhsize",
                                 "Education"                  = "education",
                                 "Marital status"             = "maritalst",
-                                "Prior religious attendance" = "rel_service",
+                                "Town size"                  = "townsize",
                                 "Region"                     = "region",
-                                "Town size"                  = "townsize")) %>%
+                                "Prior religious attendance" = "rel_service"
+                                )) %>%
   mutate(value = fct_recode(value,
                             "Primary or Junior high school"    = "Primary or Junior high school",
                             "High school"                      = "High school",
@@ -324,6 +325,17 @@ p_smd <- rbind(d_unweighted %>% mutate(source = "Unweighted"),
                                "Education: Vocational school"                         = "education_Vocational school/University-preparator",
                                "Education: University-level"                          = "education_University-level education",
                                "Education: Master or Doctoral degree"                 = "education_Master or Doctoral degree",
+                               "Marital status: Married"                              = "maritalst_Married",
+                               "Marital status: Living together as married"           = "maritalst_Living together as married",
+                               "Marital status: Separated"                            = "maritalst_Separated",
+                               "Marital status: Divorced"                             = "maritalst_Divorced",
+                               "Marital status: Widowed"                              = "maritalst_Widowed",
+                               "Marital status: Single"                               = "maritalst_Single",
+                               "Town size: Less than 5,000"                           = "townsize_Less than 5,000",
+                               "Town size: 5,000-20,000"                              = "townsize_5,000-20,000",
+                               "Town size: 20,000-100,000"                            = "townsize_20,000-100,000",
+                               "Town size: 100,000-500,000"                           = "townsize_100,000-500,000",
+                               "Town size: 500,000 and more"                          = "townsize_500,000 and more",
                                "Region: Hokkaido and Tohoku"                          = "region_Hokkaido and Tohoku",
                                "Region: Kanto"                                        = "region_Kanto",
                                "Region: Chubu"                                        = "region_Chubu",
@@ -331,17 +343,6 @@ p_smd <- rbind(d_unweighted %>% mutate(source = "Unweighted"),
                                "Region: Chugoku"                                      = "region_Chugoku",
                                "Region: Shikoku"                                      = "region_Shikoku",
                                "Region: Kyushu and Okinawa"                           = "region_Kyushu and Okinawa",
-                               "Town size: Less than 5,000"                           = "townsize_Less than 5,000",
-                               "Town size: 5,000-20,000"                              = "townsize_5,000-20,000",
-                               "Town size: 20,000-100,000"                            = "townsize_20,000-100,000",
-                               "Town size: 100,000-500,000"                           = "townsize_100,000-500,000",
-                               "Town size: 500,000 and more"                          = "townsize_500,000 and more",
-                               "Marital status: Married"                              = "maritalst_Married",
-                               "Marital status: Living together as married"           = "maritalst_Living together as married",
-                               "Marital status: Separated"                            = "maritalst_Separated",
-                               "Marital status: Divorced"                             = "maritalst_Divorced",
-                               "Marital status: Widowed"                              = "maritalst_Widowed",
-                               "Marital status: Single"                               = "maritalst_Single",
                                "Prior religious attendance: Once a week or more"      = "rel_service_Once a week or more",
                                "Prior religious attendance: Once a month"             = "rel_service_Once a month",
                                "Prior religious attendance: Only on special holidays" = "rel_service_Only on special holidays",
@@ -642,7 +643,7 @@ dev.off()
 
 #################################################
 #################################################
-#### Individual-level psychological distress ####
+#### Individual-level Psychological Distress ####
 #################################################
 #################################################
 
@@ -766,8 +767,8 @@ p_nations <- df_longitud %>%
                   aes(x = SVI, y = EVI, label = countryname), col = "black", size = 2.5, max.overlaps = 200,
                   show.legend = FALSE,
                   family = "Segoe UI Semilight") + 
-  scale_y_continuous(limits = c(0,81), breaks = seq(0,100,20)) + 
-  scale_x_continuous(limits = c(0,81), breaks = seq(0,100,20)) + 
+  scale_y_continuous(limits = c(0,80), breaks = seq(0,100,20)) + 
+  scale_x_continuous(limits = c(0,80), breaks = seq(0,100,20)) + 
   theme_minimal(base_size = 13) + 
   theme(panel.grid.minor.x = element_blank(),
         panel.grid.minor.y = element_blank(),

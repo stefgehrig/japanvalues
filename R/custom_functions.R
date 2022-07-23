@@ -640,19 +640,13 @@ create_summary_tab <- function(data, use_wgt = FALSE, wgt_var = NULL){
     mutate(wave = factor(wave, ordered = TRUE, levels = c(
       "WVS7","VIC1","VIC2"
     ))) %>% 
-    mutate(education = fct_recode(education,
-                                  "Primary or Junior high school"    = "Primary or Junior high school",
-                                  "High school"                      = "High school",
-                                  "Vocational school"                = "Vocational school/University-preparator",
-                                  "University-level"                 = "University-level education",
-                                  "Master or Doctoral degree"        = "Master or Doctoral degree")) %>%
+    mutate(education = fct_reorg(education,
+                                 "Primary or Junior high school"    = "Primary or Junior high school",
+                                 "High school"                      = "High school",
+                                 "Vocational school"                = "Vocational school/University-preparator",
+                                 "University-level"                 = "University-level education",
+                                 "Master or Doctoral degree"        = "Master or Doctoral degree")) %>%
     mutate(
-      education = factor(education, ordered = TRUE, levels = c(
-        "Primary or Junior high school",
-        "High school",
-        "Vocational school",
-        "University-level",
-        "Master or Doctoral degree")),
       maritalst = factor(maritalst, ordered = TRUE, levels = c(
         "Married",
         "Living together as married",
@@ -794,7 +788,7 @@ add_poststrat_wgts <- function(censusdata,
   
   if(add_iptw){
     
-    propmod <- glm(as.formula(paste(c("WVS ~ ", vars_nom_pref, vars_cont),
+    propmod <- glm(as.formula(paste(c("WVS ~ ", vars_cont, vars_nom_pref),
                                     collapse = " + ", sep = "")),
                    data = sampledata,
                    weights = popwgt_total/mean(popwgt_total),

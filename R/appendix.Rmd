@@ -1,5 +1,5 @@
 ---
-title: "Appendix"
+title: "Appendix for 'The COVID-19 Pandemic Revives Traditional Values in Japan'"
 author: "Plamen Akaliyski, Naoko Taniguchi, Joonha Park, Stefan Gehrig, Raül Tormos"
 documentclass: article
 output:
@@ -7,11 +7,12 @@ output:
     fig_caption: yes
     latex_engine: xelatex
     number_sections: yes
-    toc: no
+    toc: yes
     toc_depth: 2
 header-includes:
  \pagenumbering{gobble}
  \renewcommand{\thefigure}{A\arabic{figure}}
+ \renewcommand{\thetable}{A\arabic{table}}
 
 fontsize: 12pt
 geometry: top=0.7in, bottom=0.7in, left=0.7in, right=0.7in
@@ -31,7 +32,13 @@ propmod_tab <- readRDS("../results/propmod_tab.rds")
 
 \pagebreak
 
-# Covariate distributions
+# Supplementary methods
+
+...
+
+\pagebreak
+
+# Distributions of covariates
 
 Figure \@ref(fig:histogr) and Table \@ref(tab:sumtab) show distributions for covariates used during analysis. All statistics are based on the samples that remained after listwise deletion of cases which had missing values in any essential variables, i.e., either in below covariates or in *both* outcome variables EVI and SVI.
 
@@ -49,7 +56,7 @@ sum_tab %>%
   kable(format = "latex", booktab = TRUE, linesep = "", longtable = TRUE,
       align = "l", caption = "Summary statistics for respondent characteristics in WVS7, VIC1 and VIC2. Distribution for the weighted samples (propensity weights combined with post-stratification weights) for WVS7 and VIC1 are also presented. For some variables, we show results for the adult population from the Japanse census 2020 for comparison.") %>%
   kable_styling(font_size = 7, latex_options = "HOLD_position") %>% 
-  row_spec(row = c(5,8,14,22,28,35), bold = TRUE)
+  row_spec(row = c(5,8,14,21,27,35), bold = TRUE)
 ```
 
 \pagebreak
@@ -61,19 +68,18 @@ Table \@ref(tab:propmodtab) shows coefficient estimates and their standard error
 
 ```{r propmodtab}
 propmod_tab %>% 
-  slice(1, 80, 78, 79, 2:77, 81:nrow(propmod_tab)) %>% 
   kable(format = "latex", booktab = TRUE, linesep = c(rep("", nrow(propmod_tab)-8), "\\addlinespace"), 
         longtable = TRUE, col.names = c("Term", "Estimate", "Standard error"),
         align = "l", caption = "Estimated coefficients in the logistic regression model for propensity scores.") %>%
-  kable_styling(font_size = 9, latex_options = "HOLD_position") %>% 
-  row_spec(row = c(5,8,14,63,68,75), bold = TRUE)
+  kable_styling(font_size = 10, latex_options = "HOLD_position") %>% 
+  row_spec(row = c(5,8,14,21,27,75), bold = TRUE)
 ```
 
 \pagebreak
 
 # Variation between prefectures
 
-Variation between prefectures in pandemic severity, defined as number of COVID-19 infections, at the time of the VIC survey in May 2020 is shown in Figure \@ref(fig:map).
+Variation between prefectures in pandemic severity at the time of the first VIC survey in May 2020, defined as number of COVID-19 infections per 100,000 people, is shown in Figure \@ref(fig:map).
 
 \begin{figure}[H]
 \centering
