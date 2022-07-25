@@ -8,14 +8,18 @@ output:
     latex_engine: xelatex
     number_sections: yes
     toc: yes
-    toc_depth: 2
+    toc_depth: 3
 header-includes:
- \pagenumbering{gobble}
- \renewcommand{\thefigure}{A\arabic{figure}}
- \renewcommand{\thetable}{A\arabic{table}}
+ \renewcommand{\thefigure}{S\arabic{figure}}
+ \renewcommand{\thetable}{S\arabic{table}}
+ \renewcommand{\thesection}{\Alph{section}}
+ \usepackage{caption}
+ \usepackage{fontspec}
+ \setmainfont{Segoe UI Semilight}
 
-fontsize: 12pt
-geometry: top=0.7in, bottom=0.7in, left=0.7in, right=0.7in
+fontsize: 10pt
+bibliography: ../utils/japanvalues.bib
+geometry: top=1.25in, bottom=1.25in, left=1in, right=1in
 
 ---
 
@@ -32,19 +36,37 @@ propmod_tab <- readRDS("../results/propmod_tab.rds")
 
 \pagebreak
 
-# Supplementary methods
+# Additional methods
 
-...
+Here, we describe in more detail the statistical methods used in the analyses that involve both World Values Survey wave 7 (WVS7) and Values in Crisis survey wave 1 and 2 (VIC1 and VIC2) in order to assess Hypotheses 1 and 2 on national-level change and prefecture-level variation in change, respectively. In particular, we describe in more detail the weighting procedure and give an illustrative example.
+
+## Inverse probability of treatment weighting
+
+Inverse probability of treatment weighting (IPTW) adjusts for observed sample differences by upweighting (downweighting) those observations in the VIC1 sample that are similar (dissimilar) in their characteristics to the WVS7 sample. The procedure requires to estimate a propensity score that expresses the probability of being surveyed in WVS7 rather than VIC1, given individuals’ characteristics. Propensity scores were estimated via logistic regression including nine characteristics: age, number of children, household size (all continuous), gender, marital status, education, prefecture (there are 47 prefectures in Japan, nested within seven regions), town size and prior religious services attendance (all categorical; find propensity model results in Appendix \@ref(prop)). Post-stratification weights (explained below) were included when estimating in the propensity model.
+
+Propensity scores were then used to construct weights. The propensity weight for all respondents in WVS7 was set to 1, while for respondents in VIC1 it was calculated as $w_i = \pi_i / (1-\pi_i)$, where $\pi_i$ is the propensity score (i.e., the conditional probability of being surveyed of WVS7, estimated in the logistic regression model) for respondent $i$. This weight definition implies that the interest lies in the average effect of the pandemic among the population surveyed in WVS7. Technically, this corresponds to a weighting scheme to estimate an “average treatment effect on the treated”, where treatment here means being surveyed in WVS7 [@austin_moving_2015]. In that sense, the distribution of covariates in the WVS7 survey sample serves as the “gold standard” and the VIC1 sample is re-weighted to come close to this standard. This choice was made as we expect that WVS7, with its design and implementation building on many years of experience and planning in national surveying, exhibits less sample bias.
+
+Propensity scores show a large region of common support between WVS7 and VIC1 (main text, Fig. 3a) and weighting is strongly improving the balance between samples (main text, Fig. 3b and Appendix, Table \@ref(tab:sumtab)). For valid IPTW, balance diagnostics are the essential yardstick [@austin_moving_2015] and we judge the standardized mean differences between survey samples after re-weighting (main text, Fig. 3b) to indicate an appropriate propensity model. Importantly, weighting needs to be understood as only a pre-processing step and further adjustment is achieved by including the same characteristics used for weighting (with one exception: region instead of prefecture dummies are used in the outcome regression due to the large number of prefectures) as predictors in regression models which we use to infer the pandemic’s effects, with age included as both linear and squared term. Combining IPTW with adjustment variables in the outcome model is an instance of a “doubly robust” approach to causal inference, since one of the models is allowed to be misspecified [e.g., @hernan_causal_2020].
+
+## Post-stratification
+
+The goal of the methods described above is to create comparability between the WVS7 and VIC samples with respect to the most important (observed) confounding factors – an aspect of internal validity of our study. External validity, in contrast, refers to the ability to draw conclusions about the Japanese population as a whole based on the statistical results. In principle, the chances to correctly generalize from the present data are good: all data come from nationally representative survey efforts and we calculate the propensity weights in a way which fixes the probably most representative survey (WVS7) as the weighting target. Yet, some of the propensity-weighted sample frequencies (e.g., frequency of female respondents) might still deviate from the Japanese population frequencies. Therefore, we also created post-stratification weights for all unique strata defined by gender (male, female), age group (18-35 years, 36-50 years, older than 50 years) and prefecture (47 prefectures) relying on the freely accessible 2020 Japanese census [@statistics_bureau_of_japan_2020_2021] for the true population frequencies in the adult population ($\geq$ 18 years). Post-stratification is standard procedure in survey statistics to de-bias estimates from non-representative samples after the completion of data collection [@levy_sampling_2008, chapter 15.6].
+
+The resulting post-stratification weights were used already during estimation of the propensity score model [@ridgeway_propensity_2015]. We then combined the resulting propensity weights with the post-stratification weights via multiplication in order to include them as weights in the outcome regressions. This procedure is recommended to simultaneously account for aspects of confounding and survey design in observational studies [@ridgeway_propensity_2015; @dong_using_2020]. Indeed, including the post-stratification weights brings the survey samples close to the population census in age, gender and region (Table \@ref(tab:sumtab)).  Weights are normalized to have mean 1 before entering the regressions and are re-estimated for each analysis and subset of the data used, always following the outlined procedure.
+
+## Example
+
+As an illustration, we exemplify the weighting approach for a single respondent surveyed in VIC1 (subject ID `VIC706` in the uploaded data set). The respondent is a 65-year old woman in Hyogo prefecture (we ignore other characteristics for simplicity). Based on the propensity score model shown in Appendix \@ref(prop) and her socio-demographic characteristic, she is assigned a predicted probability of being surveyed in WVS7 of $\hat{\pi} = 0.577$, which is a higher probability than most other VIC1 respondents (main text, Fig. 3a). This implies that she is more similar to the sample of WVS7 respondents than most of her VIC1 co-respondents. Her propensity weight is $\hat{w} = 0.577 / (1-0.577) = 1.36$ and her response to the emancipative and secular values questions is therefore upweighted relative to VIC1 respondents with lower $\hat{\pi}$. In the VIC1 sample, her stratum (female, older than 50 years, Hyogo prefecture) is represented with $0.65\%$. The census tells, however, that her stratum makes up $1.31\%$ of the Japanese adult population. Therefore, she is assigned a post-stratification weight of $1.31\% / 0.65\% = 2.02$ to make up for the under-representation of the stratum in the VIC1 sample compared to the population. The observation's final weight is obtained by multiplying the propensity and post-stratification weight, so here it is $1.36 \times 2.02 = 2.75$.^[For WVS7 respondents, the propensity weight is always 1, so the combined weight is equal to the post-stratification weight.]
 
 \pagebreak
 
-# Distributions of covariates
+# Distributions of covariates {#distr}
 
-Figure \@ref(fig:histogr) and Table \@ref(tab:sumtab) show distributions for covariates used during analysis. All statistics are based on the samples that remained after listwise deletion of cases which had missing values in any essential variables, i.e., either in below covariates or in *both* outcome variables EVI and SVI.
+Figure \@ref(fig:histogr) and Table \@ref(tab:sumtab) show distributions for covariates which were used for adjustment. All statistics are based on the samples that remained after listwise deletion of cases which had missing values in any essential variables, i.e., either in the covariates themselves or in *both* outcome variables EVI and SVI.
 
 \begin{figure}
 \centering
-\includegraphics[width=14cm]{../results/p_balance.png}
+\includegraphics[width=12cm]{../results/p_balance.png}
 \caption{Relative frequencies of characteristics in the WVS7 and VIC1 samples. Raw data prior to weighting is shown.}
 \label{fig:histogr}
 \end{figure}
@@ -54,14 +76,14 @@ Figure \@ref(fig:histogr) and Table \@ref(tab:sumtab) show distributions for cov
 ```{r sumtab}
 sum_tab %>% 
   kable(format = "latex", booktab = TRUE, linesep = "", longtable = TRUE,
-      align = "l", caption = "Summary statistics for respondent characteristics in WVS7, VIC1 and VIC2. Distribution for the weighted samples (propensity weights combined with post-stratification weights) for WVS7 and VIC1 are also presented. For some variables, we show results for the adult population from the Japanse census 2020 for comparison.") %>%
-  kable_styling(font_size = 7, latex_options = "HOLD_position") %>% 
+      align = "l", caption = "Summary statistics for respondent characteristics in WVS7, VIC1 and VIC2. Distribution for the weighted samples (propensity weights combined with post-stratification weights) for WVS7 and VIC1 are also presented. For some variables, we show statistics for the adult population from the Japanese population census 2020 for comparison.") %>%
+  kable_styling(font_size = 8, latex_options = "HOLD_position") %>% 
   row_spec(row = c(5,8,14,21,27,35), bold = TRUE)
 ```
 
 \pagebreak
 
-# Propensity score regression model
+# Propensity score regression model {#prop}
 
 Table \@ref(tab:propmodtab) shows coefficient estimates and their standard errors from the logistic regression model used for estimation of propensity scores. The outcome variable was whether a respondent was surveyed in WVS7 (coded as 1) or in VIC1 (coded as 0) and the preidcted probabilities were used to contruct inverse probability of treatment weights for the WVS7-VIC1 comparison. Note that the size of estimates for two prefectures (Miyazaki, Tottori) and their uncertainty are extremely large, which is because the WVS7 sample does not include respondents from these two prefectures, which are rather small in terms of population. Hence, the model predicts low propensity scores for the few respondents from those prefectures in the VIC1 sample.
 
@@ -71,7 +93,7 @@ propmod_tab %>%
   kable(format = "latex", booktab = TRUE, linesep = c(rep("", nrow(propmod_tab)-8), "\\addlinespace"), 
         longtable = TRUE, col.names = c("Term", "Estimate", "Standard error"),
         align = "l", caption = "Estimated coefficients in the logistic regression model for propensity scores.") %>%
-  kable_styling(font_size = 10, latex_options = "HOLD_position") %>% 
+  kable_styling(font_size = 8, latex_options = "HOLD_position") %>% 
   row_spec(row = c(5,8,14,21,27,75), bold = TRUE)
 ```
 
@@ -88,7 +110,7 @@ Variation between prefectures in pandemic severity at the time of the first VIC 
 \label{fig:map}
 \end{figure}
 
-In Figure \@ref(fig:intact), we visualize the estimated effect of pandemic severity on change in societal values. In particular, we show how for an 'typical individual' from WVS7, defined by having the (marginal) median or mode in all covariates, the number of cumulative COVID-19 infections in the prefecture affects change in EVI and SVI, based on our outcome regressions shown in the main text. The difference in slopes displays the interaction effect of both variables (see Fig. 6 in the main text for estimated coefficients of the interaction effect). As should be expected under a well-specified model, the estimated number of infections that a prefecture *will* have at the point in time when the VIC1 survey is conducted (May 2020) is not related to societal values at the point in time when the WVS7 survey is conducted (September 2019), given the variables included in the model. This is indicated by the flat solid line.
+In Figure \@ref(fig:intact), we visualize the estimated effect of pandemic severity on change in societal values. In particular, we show how for an 'typical individual' from WVS7, defined by having the (marginal) median or mode in all covariates, the number of cumulative COVID-19 infections in the prefecture affects change in EVI and SVI, based on our outcome regressions shown in the main text. The difference in slopes displays the interaction effect of both variables (see Fig. 6 in the main text for estimated coefficients of the interaction effect). As should be expected under a well-specified model, the estimated number of infections that a prefecture *will* have at the point in time when the VIC1 survey is conducted (May 2020) is not related to societal values at the point in time when the WVS7 survey is conducted (September 2019), given the variables included in the model. This is indicated by the flat solid lines.
 
 
 \begin{figure}[H]
@@ -97,3 +119,24 @@ In Figure \@ref(fig:intact), we visualize the estimated effect of pandemic sever
 \caption{Predicted values for a typical individual as a function of COVID-19 pandemic severity (cumulative infections in the prefecture per 100,000 until the VIC1 survey date) and survey time point. Pointwise 95\% confidence intervals are shown.}
 \label{fig:intact}
 \end{figure}
+
+\pagebreak
+
+# Fixed-effect regressions for psychological distress
+
+As part of the analysis on individual-level variation in psychological distress, we provide results from fixed-effect panel models in Figure \@ref(fig:fe). In the main text, Fig. 7 presents estimates for the effect of psychological distress on emancipative and secular values based on comparisons *between* individuals. Those between-individual estimates are adjusted for wide range of between-individual variation in, e.g., household income or personality type. Here, instead, we present estimates based on comparisons *within* individuals over time by using linear regressions with fixed effects for individual subjects and a dummy predictor variable for survey wave. No further adjustment variables are included here due to their collinearity with the fixed effects. Whereas the between-individual analysis is based only on a single observation per respondent in either VIC1 or VIC2, the within-individual analysis shown here is based only on respondents who completed both survey waves (sample sizes in Figure \@ref(fig:fe) refer to number of observations, which is double the number of individual subjects).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=14cm]{../results/p_coeff_models4.png}
+\caption{[...]}
+\label{fig:fe}
+\end{figure}
+
+An advantage of the fixed effects approach is that time-invariant (but not time-variant) unobserved variation between individuals is controlled for, which eliminates further potential confounders - in particular, unobserved variables which differ between individuals, do not vary over time, are in a time-invariant way associated with both psychological distress and emancipative or secular values and whose effect is not yet captured by our other adjustment variables. A clear disadvantage in our setting is that the fixed effects approach can only exploit within-individual variation in distress between VIC1 and VIC2 (which is comparably low, see main text) and therefore discards all (co-)variation in distress and values that occurred during the initial onset of the COVID-19 pandemic (i.e., between WVS7 and VIC1). This fact limits its efficiency. Nevertheless, also in the fixed effect models we see a negative relationship between psychological distress and emancipative values (Figure \@ref(fig:fe)): People whose distress decreased between May 2020 and April 2021 on average also report higher emancipative values in April 2021 than in May 2020, most strikingly in terms of gender equality.
+
+For SVI and its items, there is no clear evidence for an association (Figure \@ref(fig:fe)). This differs from the results of the between-individual analysis (main text, Fig. 7), which are more in line with all the other results presented in the main text. We cannot give definitive explanations for the deviating results in the fixed-effect analysis of secular values. For the outlined reasons of non-random drop-out^[People with higher distress at VIC1 were more likely to subsequently drop out of the VIC survey (see main text) and there is also evidence for drop-outs being less secular at VIC1 than people who remained in the sample until VIC2 ($65.2$ vs. $66.5$  points, $p = 0.026$). A similar relationship is not found with respect to emancipative values ($61.5$ vs. $61.6$ points, $p = 0.84$).], sample size and extent of variation in exposure, we generally favor the between-individual analysis presented in the main text, but acknowledge that results in Figure \@ref(fig:fe) cast some additional uncertainty on the strength and existence of individual-level effects of psychological distress on religious values.
+
+\pagebreak
+
+# References
