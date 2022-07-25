@@ -666,8 +666,7 @@ mods_psych <- map_dfr(outcome_long, .id = "outcome", function(x){
   if(x %in% outcome_EVI_long){
     data <- df3 %>% filter(!is.na(EVI))
     data$wgt <- data$popwgt_EVI
-    
-    
+
   } else{
     data <- df3 %>% filter(!is.na(SVI))  
     data$wgt <- data$popwgt_SVI
@@ -720,8 +719,7 @@ mods_psych_within <- map_dfr(outcome_long, .id = "outcome", function(x){
       filter(wave != "WVS7") %>%
       ungroup %>%
       filter(times == 2) # only allow respondents with two data points
-  
-      
+
     data <- add_poststrat_wgts(census, data, add_iptw = FALSE)
     
     data$wgt <- data$popwgt_EVI
@@ -1022,10 +1020,6 @@ t.test(df$distress[df$participation=="Both W1 and W2" & df$wave == "VIC2"], df$d
 # EVI and SVI comparisons between retained and drop-outs
 t.test(df$SVI[df$participation=="Both W1 and W2" & df$wave == "VIC1"], df$SVI[df$participation=="W1 only"]) # 66.46298  65.16100, p-value = 0.02645
 t.test(df$EVI[df$participation=="Both W1 and W2" & df$wave == "VIC1"], df$EVI[df$participation=="W1 only"]) # 61.60901  61.47221, p-value = 0.8416
-
-
-var.test(df$SVI[df$participation=="Both W1 and W2"], df$SVI[df$participation=="W1 only"]) # 66.46298  65.16100, p-value = 0.02645
-var.test(df$EVI[df$participation=="Both W1 and W2"], df$EVI[df$participation=="W1 only"]) # 61.60901  61.47221, p-value = 0.8416
 
 # explore distress deltas for retained
 delta_distress <- df %>% 
