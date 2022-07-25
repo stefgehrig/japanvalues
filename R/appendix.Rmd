@@ -129,7 +129,7 @@ As part of the analysis on individual-level variation in psychological distress,
 \begin{figure}[H]
 \centering
 \includegraphics[width=14cm]{../results/p_coeff_models4.png}
-\caption{[...]}
+\caption{Association between psychological distress and (a) EVI and (b) SVI among respondents from the VIC1 and VIC2 surveys as estimated in weighted fixed-effect linear regressions.}
 \label{fig:fe}
 \end{figure}
 
