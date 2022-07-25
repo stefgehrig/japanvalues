@@ -91,7 +91,7 @@ census <- df_census %>% mutate(age_group = case_when(
   group_by(prefecture, sex, age_group) %>% 
   summarise(pop = sum(pop),
             pop_total_above18 = unique(pop_total_above18), .groups = "drop") %>% 
-  mutate(prop_pop = pop / pop_total_above18) %>% 
+  mutate(stratum_prop_pop = pop / pop_total_above18) %>% 
   rename(gender = sex)
 
 # estimate propensity and post-stratification weights
@@ -230,32 +230,32 @@ dev.off()
 
 # plotting propensity score overlap
 propensit_stripe <- ggplot() +
-  geom_line(data = df1, aes(x = wave, y = propensit), alpha = 0.03) +
-  geom_jitter(data = df1, aes(x = wave, y = propensit), width = 0.08, height = 0, size = 0.5) +
+  geom_line(data = df1, aes(x = wave, y = propensit_total), alpha = 0.03) +
+  geom_jitter(data = df1, aes(x = wave, y = propensit_total), width = 0.08, height = 0, size = 0.5) +
   theme_minimal(base_size = 13) +
   theme(panel.grid = element_blank(),
         legend.position = "bottom",
         text = element_text(family = "Segoe UI Semilight")) +
   labs(y = "Estimated probability of being surveyed in WVS7",
-       x = "")
+       x = "",
+       title = "a")
 
 wvs_margin <- ggplot(df1 %>% filter(WVS == 1)) +
-  geom_density(aes(x = propensit), show.legend = FALSE) +
+  geom_density(aes(x = propensit_total), show.legend = FALSE) +
   theme_void() +
   coord_flip() +
   scale_y_reverse() +
-  labs(title = "a") +
   theme(plot.title.position = "plot",
         text = element_text(family = "Segoe UI Semilight"))
 
 vic1_margin <- ggplot(df1 %>% filter(WVS == 0)) +
-  geom_density(aes(x = propensit), show.legend = FALSE) +
+  geom_density(aes(x = propensit_total), show.legend = FALSE) +
   theme_void() +
   coord_flip()
 
 p_scores <- wvs_margin + propensit_stripe + vic1_margin + plot_layout(ncol = 3, nrow = 1)
 
-# plotting standardized mean differences unweighted and weighted
+# plotting standardized mean differences unweighted
 df1_dummied_unweighted <- dummy_cols(
   df1 %>% select(wave, all_of(c(vars_cont, vars_nom_reg))),
   remove_selected_columns = TRUE)
@@ -281,6 +281,7 @@ d_unweighted <- bind_cols(stats_cont_unweighted, stats_bin_unweighted %>% select
                       sqrt((var[wave=="WVS7"] + var[wave=="VIC1"])/2)
   ))
 
+# plotting standardized mean differences weighted
 df1_dummied_weighted <- dummy_cols(
   df1 %>% mutate(wgt_combined_total = wgt_combined_total/mean(wgt_combined_total)) %>% 
     select(wave, wgt_combined_total, all_of(c(vars_cont, vars_nom_reg))),
@@ -647,9 +648,10 @@ dev.off()
 #################################################
 #################################################
 
+# between-individual analysis
 df3 <-  df %>% 
   drop_na(all_of(vars_psych)) %>% 
-  filter(!(is.na(EVI) | is.na(SVI))) %>% 
+  filter(!(is.na(EVI) & is.na(SVI))) %>% 
   group_by(subject_id) %>% 
   mutate(times = n()) %>% 
   filter(wave != "WVS7") %>% 
@@ -658,7 +660,7 @@ df3 <-  df %>%
 
 df3 <- add_poststrat_wgts(census, df3, add_iptw = FALSE)
 
-# psychological distress effect: model estimation
+# psychological distress effect: model estimation (between)
 mods_psych <- map_dfr(outcome_long, .id = "outcome", function(x){
   
   if(x %in% outcome_EVI_long){
@@ -667,7 +669,7 @@ mods_psych <- map_dfr(outcome_long, .id = "outcome", function(x){
     
     
   } else{
-    data <- df3 %>% filter(!is.na(SVI))
+    data <- df3 %>% filter(!is.na(SVI))  
     data$wgt <- data$popwgt_SVI
   }
   
@@ -679,11 +681,9 @@ mods_psych <- map_dfr(outcome_long, .id = "outcome", function(x){
   )
   
   bind_cols(tidy(m), glance(m))
-  })%>%
-  filter(term == "distress") %>% 
-  mutate(analysis = NA)
+  }) %>% mutate(analysis = NA)
 
-# forest plots
+# forest plots (between)
 forestA <- forestplots_psych(mods      = mods_psych %>% filter(outcome %in% outcome_EVI_long),
                              version   = "EVI", 
                              color     = "slateblue", 
@@ -709,6 +709,73 @@ png("results/p_coeff_models3.png", width = 2800, height = 1500, res = 365)
 print(p_coeff_models3)
 dev.off()
 
+# within-individual analysis
+# psychological distress effect: model estimation (within)
+mods_psych_within <- map_dfr(outcome_long, .id = "outcome", function(x){
+
+  if(x %in% outcome_EVI_long){
+    data <- df %>% filter(!is.na(EVI)) %>% 
+      group_by(subject_id) %>%
+      mutate(times = n()) %>%
+      filter(wave != "WVS7") %>%
+      ungroup %>%
+      filter(times == 2) # only allow respondents with two data points
+  
+      
+    data <- add_poststrat_wgts(census, data, add_iptw = FALSE)
+    
+    data$wgt <- data$popwgt_EVI
+
+
+  } else{
+    data <- df %>% filter(!is.na(SVI)) %>% 
+      group_by(subject_id) %>%
+      mutate(times = n()) %>%
+      filter(wave != "WVS7") %>%
+      ungroup %>%
+      filter(times == 2) # only allow respondents with two data points
+    
+    data <- add_poststrat_wgts(census, data, add_iptw = FALSE)
+    
+    data$wgt <- data$popwgt_SVI
+  }
+
+  m <- lm_robust(as.formula(paste(x, "~ distress + wave")),
+                 data = data,
+                 fixed_effects = subject_id,
+                 weights = wgt/mean(wgt),
+                 se_type = "stata"
+  )
+
+  bind_cols(tidy(m), glance(m))
+}) %>% mutate(analysis = NA,
+              nobs = nobs/2) # sample size as subjects
+
+# forest plots
+forestA <- forestplots_psych(mods      = mods_psych_within %>% filter(outcome %in% outcome_EVI_long),
+                             version   = "EVI",
+                             color     = "slateblue",
+                             plotlabel = "a",
+                             scale_lim = c(-6,7),
+                             suppr_x   = FALSE,
+                             coef_of   = "distress",
+                             xlabel    = "Effect of psycholgical distress")
+
+forestB <- forestplots_psych(mods      = mods_psych_within %>% filter(outcome %in% outcome_SVI),
+                             version   = "SVI",
+                             color     = "darkorange",
+                             plotlabel = "b",
+                             scale_lim = c(-6,7),
+                             suppr_x   = FALSE,
+                             coef_of   = "distress",
+                             xlabel    = "Effect of psycholgical distress")
+
+p_coeff_models4 <- (forestA + plot_layout(widths = c(5/4, 1))) /
+  (forestB + plot_layout(widths = c(5/4, 1)))
+
+png("results/p_coeff_models4.png", width = 2800, height = 1500, res = 365)
+print(p_coeff_models4)
+dev.off()
 #################################
 #################################
 #### More Figures and Tables ####
@@ -766,6 +833,7 @@ p_nations <- df_longitud %>%
                     filter(countryname != "Japan", wave=="WVS7"),
                   aes(x = SVI, y = EVI, label = countryname), col = "black", size = 2.5, max.overlaps = 200,
                   show.legend = FALSE,
+                  box.padding = 0.25,
                   family = "Segoe UI Semilight") + 
   scale_y_continuous(limits = c(0,80), breaks = seq(0,100,20)) + 
   scale_x_continuous(limits = c(0,80), breaks = seq(0,100,20)) + 
@@ -947,9 +1015,26 @@ df %>%
   summarise(cor(age, EVI, use = "pair"), # -0.327 
             cor(age, SVI, use = "pair")) # -0.282
 
-# distress comparisons between subgroups
-t.test(df$distress[df$participation=="Both W1 and W2"], df$distress[df$participation=="W1 only"]) # p-value = 4.68e-05
-t.test(df$distress[df$participation=="Both W1 and W2"], df$distress[df$participation=="W2 only"]) # p-value = 0.0004897
+# distress comparisons between retained and drop-outs, as well as retained and replacements
+t.test(df$distress[df$participation=="Both W1 and W2" & df$wave == "VIC1"], df$distress[df$participation=="W1 only"]) # 1.653348  1.747406, p-value = 0.002621
+t.test(df$distress[df$participation=="Both W1 and W2" & df$wave == "VIC2"], df$distress[df$participation=="W2 only"]) # 1.611052  1.735957, p-value = 0.0001223
+
+# EVI and SVI comparisons between retained and drop-outs
+t.test(df$SVI[df$participation=="Both W1 and W2" & df$wave == "VIC1"], df$SVI[df$participation=="W1 only"]) # 66.46298  65.16100, p-value = 0.02645
+t.test(df$EVI[df$participation=="Both W1 and W2" & df$wave == "VIC1"], df$EVI[df$participation=="W1 only"]) # 61.60901  61.47221, p-value = 0.8416
+
+
+var.test(df$SVI[df$participation=="Both W1 and W2"], df$SVI[df$participation=="W1 only"]) # 66.46298  65.16100, p-value = 0.02645
+var.test(df$EVI[df$participation=="Both W1 and W2"], df$EVI[df$participation=="W1 only"]) # 61.60901  61.47221, p-value = 0.8416
+
+# explore distress deltas for retained
+delta_distress <- df %>% 
+  filter(participation=="Both W1 and W2") %>% 
+  select(subject_id, wave, distress) %>% 
+  pivot_wider(names_from = wave, values_from = distress) %>% 
+  mutate(delta_distress = VIC2-VIC1) %>% 
+  pull(delta_distress)
+t.test(delta_distress, mu = 0) # mean: -0.04229543, p-value = 0.02011
 
 # estimate ICC of distress between waves for repeated respondents
 lmm <- lmer(
@@ -962,3 +1047,9 @@ lmm <- lmer(
 vars <- as_tibble(summary(lmm)$varcor)
 vars$vcov[vars$grp=="subject_id"] / 
   (vars$vcov[vars$grp=="subject_id"] + vars$vcov[vars$grp=="Residual"]) # 0.5259601
+
+# the single respondent for illustration (Appendix A)
+df1 %>% 
+  filter(subject_id == "VIC706") %>% 
+  select(all_of(c(vars_cont, vars_nom_pref)), 
+         propensit_total, wgt_att_total, stratum_prop_samp_total, stratum_prop_pop, popwgt_total)
