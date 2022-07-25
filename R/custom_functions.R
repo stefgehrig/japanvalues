@@ -757,54 +757,85 @@ create_summary_tab <- function(data, use_wgt = FALSE, wgt_var = NULL){
 
 # estimation of survey-wise post-stratification weights and (optionally) propensity weights
 add_poststrat_wgts <- function(censusdata, 
-                               sampledata, 
+                               sampledata,
                                add_iptw = FALSE){
-  
-  samp <- sampledata %>%
-    group_by(wave) %>% 
-    mutate(samp_total_EVI = sum(!is.na(EVI)),
-           samp_total_SVI = sum(!is.na(SVI)),
-           samp_total = nrow(.)) %>% 
-    group_by(wave, prefecture, age_group, gender) %>% 
-    summarise(n = n(),
-              prop_samp_total = n/first(samp_total),
-              n_EVI=sum(!is.na(EVI)),
-              prop_samp_EVI = n_EVI/first(samp_total_EVI),
-              n_SVI=sum(!is.na(SVI)),
-              prop_samp_SVI = n_SVI/first(samp_total_SVI), 
-              .groups = "drop")
-  
-  wgts <- left_join(samp, censusdata, by = c("prefecture", "gender", "age_group")) %>% 
-    mutate(popwgt_total = prop_pop / prop_samp_total,
-           popwgt_EVI   = prop_pop / prop_samp_EVI,
-           popwgt_SVI   = prop_pop / prop_samp_SVI) %>% 
-    select(wave, prefecture, gender, age_group, contains("popwgt"))
-  
-  stopifnot(ncol(wgts)==7)
-  
-  sampledata <- sampledata %>% 
-    left_join(wgts, by = c("age_group", "gender", "prefecture", "wave"))
-  
-  
+
+    samp <- sampledata %>%
+      group_by(wave) %>% 
+      mutate(samp_total_EVI = sum(!is.na(EVI)),
+             samp_total_SVI = sum(!is.na(SVI)),
+             samp_total = n()) %>% 
+      group_by(wave, prefecture, age_group, gender) %>% 
+      summarise(n = n(),
+                stratum_prop_samp_total = n/first(samp_total),
+                
+                n_EVI=sum(!is.na(EVI)),
+                stratum_prop_samp_EVI = n_EVI/first(samp_total_EVI),
+                
+                n_SVI=sum(!is.na(SVI)),
+                stratum_prop_samp_SVI = n_SVI/first(samp_total_SVI), 
+                
+                .groups = "drop")
+    
+    wgts <- left_join(samp, censusdata, by = c("prefecture", "gender", "age_group")) %>% 
+      mutate(popwgt_total = stratum_prop_pop / stratum_prop_samp_total,
+             popwgt_EVI   = stratum_prop_pop / stratum_prop_samp_EVI,
+             popwgt_SVI   = stratum_prop_pop / stratum_prop_samp_SVI) %>% 
+      select(wave, prefecture, gender, age_group, contains("popwgt"), contains("stratum"))
+    
+    sampledata <- sampledata %>% 
+      left_join(wgts, by = c("age_group", "gender", "prefecture", "wave")) %>% 
+      mutate(id=row_number())
+
   if(add_iptw){
     
-    propmod <- glm(as.formula(paste(c("WVS ~ ", vars_cont, vars_nom_pref),
+    propmod_total <- glm(as.formula(paste(c("WVS ~ ", vars_cont, vars_nom_pref),
                                     collapse = " + ", sep = "")),
-                   data = sampledata,
-                   weights = popwgt_total/mean(popwgt_total),
-                   family = binomial)
+                         data = sampledata,
+                         weights = popwgt_total/mean(popwgt_total),
+                         family = binomial)
     
-    sampledata <- sampledata %>% mutate(
-      propensit = as.numeric(unname(predict(propmod, type = "response"))),
-      wgt_att     = WVS + (propensit * (1-WVS)) / (1-propensit),
-      wgt_combined_EVI   = wgt_att * popwgt_EVI,
-      wgt_combined_SVI   = wgt_att * popwgt_SVI,
-      wgt_combined_total = wgt_att * popwgt_total
+    propmod_EVI   <- glm(as.formula(paste(c("WVS ~ ", vars_cont, vars_nom_pref),
+                                          collapse = " + ", sep = "")),
+                         data =  sampledata %>% filter(!is.na(EVI)),
+                         weights = popwgt_EVI/mean(popwgt_EVI),
+                         family = binomial)
+    
+    propmod_SVI   <- glm(as.formula(paste(c("WVS ~ ", vars_cont, vars_nom_pref),
+                                          collapse = " + ", sep = "")),
+                         data =  sampledata %>% filter(!is.na(SVI)),
+                         weights = popwgt_SVI/mean(popwgt_SVI),
+                         family = binomial)
+    
+    tmp_EVI <- sampledata %>% filter(!is.na(EVI)) %>% 
+      mutate(propensit_EVI = as.numeric(unname(predict(propmod_EVI, type = "response")))) %>% 
+      select(id, propensit_EVI)
+    
+    tmp_SVI <- sampledata %>% filter(!is.na(SVI)) %>% 
+      mutate(propensit_SVI = as.numeric(unname(predict(propmod_SVI, type = "response")))) %>% 
+      select(id, propensit_SVI)
+
+    sampledata <- sampledata %>% 
+      left_join(tmp_EVI, by = "id") %>% 
+      left_join(tmp_SVI, by = "id") %>% 
+      mutate(
+        
+      propensit_total     = as.numeric(unname(predict(propmod_total, type = "response"))),
+      
+      wgt_att_total       = WVS + (propensit_total * (1-WVS)) / (1-propensit_total),
+      wgt_att_EVI         = WVS + (propensit_EVI * (1-WVS)) / (1-propensit_EVI),
+      wgt_att_SVI         = WVS + (propensit_SVI * (1-WVS)) / (1-propensit_SVI),
+      
+      wgt_combined_EVI   = wgt_att_EVI * popwgt_EVI,
+      wgt_combined_SVI   = wgt_att_SVI * popwgt_SVI,
+      wgt_combined_total = wgt_att_total * popwgt_total
     )
     
-    data_and_propmodel <- list(sampledata, propmod)
+    data_and_propmodel <- list(sampledata, propmod_total)
+    
     return(data_and_propmodel)
   } else{
+    
     return(sampledata)
   }
   
