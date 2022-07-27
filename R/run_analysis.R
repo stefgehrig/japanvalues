@@ -774,6 +774,7 @@ p_coeff_models4 <- (forestA + plot_layout(widths = c(5/4, 1))) /
 png("results/p_coeff_models4.png", width = 2800, height = 1500, res = 365)
 print(p_coeff_models4)
 dev.off()
+
 #################################
 #################################
 #### More Figures and Tables ####
@@ -1047,3 +1048,20 @@ df1 %>%
   filter(subject_id == "VIC706") %>% 
   select(all_of(c(vars_cont, vars_nom_pref)), 
          propensit_total, wgt_att_total, stratum_prop_samp_total, stratum_prop_pop, popwgt_total)
+
+# between-individual analysis of distress when removing nation_pride from SVI
+data <- df3 %>% filter(!is.na(SVI))  
+data$wgt <- data$popwgt_SVI
+
+data$defiance <- (data$parents_proud + data$respect_author) / 2
+data$agnostic <- (data$rel_imp + data$rel_person) / 2
+data$SVI_no_nation <- (data$defiance + data$agnostic) / 2
+
+x <- "SVI_no_nation"
+m <- lm_robust(as.formula(paste(x, "~ distress + wave +", paste(c(vars_psych),
+                                                                collapse = "+"), sep ="")),
+               data = data,
+               weights = wgt/mean(wgt),
+               se_type = "stata"
+               )
+tidy(m) %>% filter(term == "distress") # -1.296828 (-2.057364 -0.5362924)
