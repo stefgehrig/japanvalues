@@ -834,11 +834,10 @@ add_poststrat_wgts <- function(censusdata,
     data_and_propmodel <- list(sampledata, propmod_total)
     
     return(data_and_propmodel)
-  } else{
     
+  } else{
     return(sampledata)
   }
-  
 }
 
 # weighted mode function from: https://rdrr.io/github/marberts/smart/src/R/computations.R

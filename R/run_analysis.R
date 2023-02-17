@@ -41,8 +41,8 @@ names(outcome_long) <- unlist(outcome_long)
 
 # define covariates for adjustment
 vars_cont     <- c("age", "children", "hhsize")
-vars_nom_pref <- c("gender","education", "maritalst",  "townsize", "prefecture","rel_service")
-vars_nom_reg  <- c("gender","education", "maritalst",  "townsize", "region",    "rel_service")
+vars_nom_pref <- c("gender","education", "maritalst",  "townsize", "prefecture", "rel_service")
+vars_nom_reg  <- c("gender","education", "maritalst",  "townsize", "region",     "rel_service")
 vars_bfive    <- c(names(df)[grepl("bfive", names(df))], "distress")
 vars_psych    <- c(vars_cont, vars_nom_reg, "hhincome", vars_bfive)
 
@@ -57,7 +57,7 @@ df_filt <- df %>%
   drop_na(!!vars_cont, !!vars_nom_pref) %>% 
   filter(!(is.na(EVI) & is.na(SVI)))
 
-                     # create new variables
+# create new variables
 df_filt <- df_filt %>% 
   mutate(WVS = ifelse(wave == "WVS7", 1, 0),
          VIC = ifelse(wave %in% c("VIC1", "VIC2"), 1, 0),
@@ -1015,12 +1015,16 @@ df %>%
             cor(age, SVI, use = "pair")) # -0.282
 
 # distress comparisons between retained and drop-outs, as well as retained and replacements
-t.test(df$distress[df$participation=="Both W1 and W2" & df$wave == "VIC1"], df$distress[df$participation=="W1 only"]) # 1.653348  1.747406, p-value = 0.002621
-t.test(df$distress[df$participation=="Both W1 and W2" & df$wave == "VIC2"], df$distress[df$participation=="W2 only"]) # 1.611052  1.735957, p-value = 0.0001223
+t.test(df$distress[df$participation=="Both W1 and W2" & df$wave == "VIC1"], 
+       df$distress[df$participation=="W1 only"]) # 1.653348  1.747406, p-value = 0.002621
+t.test(df$distress[df$participation=="Both W1 and W2" & df$wave == "VIC2"], 
+       df$distress[df$participation=="W2 only"]) # 1.611052  1.735957, p-value = 0.0001223
 
 # EVI and SVI comparisons between retained and drop-outs
-t.test(df$SVI[df$participation=="Both W1 and W2" & df$wave == "VIC1"], df$SVI[df$participation=="W1 only"]) # 66.46298  65.16100, p-value = 0.02645
-t.test(df$EVI[df$participation=="Both W1 and W2" & df$wave == "VIC1"], df$EVI[df$participation=="W1 only"]) # 61.60901  61.47221, p-value = 0.8416
+t.test(df$SVI[df$participation=="Both W1 and W2" & df$wave == "VIC1"], 
+       df$SVI[df$participation=="W1 only"]) # 66.46298  65.16100, p-value = 0.02645
+t.test(df$EVI[df$participation=="Both W1 and W2" & df$wave == "VIC1"], 
+       df$EVI[df$participation=="W1 only"]) # 61.60901  61.47221, p-value = 0.8416
 
 # explore distress deltas for retained
 delta_distress <- df %>% 

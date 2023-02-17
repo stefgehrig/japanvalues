@@ -24,11 +24,11 @@ geometry: top=1.25in, bottom=1.25in, left=1in, right=1in
 ---
 
 ```{r setup, include=FALSE}
-library(knitr)
+library(tidyverse)
 library(kableExtra)
-library(dplyr)
 library(gtsummary)
 library(gt)
+source("custom_functions.R")
 knitr::opts_chunk$set(echo = FALSE)
 sum_tab <- readRDS("../results/sum_tab.rds")
 propmod_tab <- readRDS("../results/propmod_tab.rds")
@@ -36,7 +36,7 @@ propmod_tab <- readRDS("../results/propmod_tab.rds")
 
 \pagebreak
 
-# Additional methods
+# Methods in detail
 
 Here, we describe in more detail the statistical methods used in the analyses that involve both World Values Survey wave 7 (WVS7) and Values in Crisis survey wave 1 and 2 (VIC1 and VIC2) in order to assess Hypotheses 1 and 2 on national-level change and prefecture-level variation in change, respectively. In particular, we describe in more detail the weighting procedure and give an illustrative example.
 
@@ -56,7 +56,67 @@ The resulting post-stratification weights were used already during estimation of
 
 ## Example
 
-As an illustration, we exemplify the weighting approach for a single respondent surveyed in VIC1 (subject ID `VIC706` in the uploaded data set). The respondent is a 65-year old woman in Hyogo prefecture (we ignore other characteristics for simplicity). Based on the propensity score model shown in Appendix \@ref(prop) and her socio-demographic characteristic, she is assigned a predicted probability of being surveyed in WVS7 of $\hat{\pi} = 0.577$, which is a higher probability than most other VIC1 respondents (main text, Fig. 3a). This implies that she is more similar to the sample of WVS7 respondents than most of her VIC1 co-respondents. Her propensity weight is $\hat{w} = 0.577 / (1-0.577) = 1.36$ and her response to the emancipative and secular values questions is therefore upweighted relative to VIC1 respondents with lower $\hat{\pi}$. In the VIC1 sample, her stratum (female, older than 50 years, Hyogo prefecture) is represented with $0.65\%$. The census tells, however, that her stratum makes up $1.31\%$ of the Japanese adult population. Therefore, she is assigned a post-stratification weight of $1.31\% / 0.65\% = 2.02$ to make up for the under-representation of the stratum in the VIC1 sample compared to the population. The observation's final weight is obtained by multiplying the propensity and post-stratification weight, so here it is $1.36 \times 2.02 = 2.75$.^[For WVS7 respondents, the propensity weight is always 1, so the combined weight is equal to the post-stratification weight.]
+As an illustration, we exemplify the weighting approach for a single respondent surveyed in VIC1 (subject ID `VIC706` in the uploaded data set). The respondent is a 65-year old woman in Hyogo prefecture (we ignore other characteristics for simplicity). Based on the propensity score model shown in Appendix \@ref(prop), she is assigned a predicted probability of being surveyed in WVS7 of $\hat{\pi} = 0.577$, which is a higher probability than most other VIC1 respondents (main text, Fig. 3a). This implies that she is more similar to the sample of WVS7 respondents than most of her VIC1 co-respondents. Her propensity weight is $\hat{w} = 0.577 / (1-0.577) = 1.36$ and her response to the emancipative and secular values questions is therefore upweighted relative to VIC1 respondents with lower $\hat{\pi}$. In the VIC1 sample, her stratum (female, older than 50 years, Hyogo prefecture) is represented with $0.65\%$. The census tells, however, that her stratum makes up $1.31\%$ of the Japanese adult population. Therefore, she is assigned a post-stratification weight of $1.31\% / 0.65\% = 2.02$ to make up for the under-representation of the stratum in the VIC1 sample compared to the population. The observation's final weight is obtained by multiplying the propensity and post-stratification weight, so here it is $1.36 \times 2.02 = 2.75$.^[For WVS7 respondents, the propensity weight is always 1, so the combined weight is equal to the post-stratification weight.]
+
+The following code is extracted from the `run_analysis.R` script in our GitHub repository (https://github.com/stefgehrig/japanvalues) and reproduces the example in R:
+
+\scriptsize
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+# import VIC and WVS survey data
+df <- read_csv("../data/surveydata.csv", guess_max = 1500)
+# import census data
+df_census <- read_csv2("../data/jp_census_2020_age_sex_pref.csv")
+
+# define covariates for adjustment
+vars_cont     <- c("age", "children", "hhsize")
+vars_nom_pref <- c("gender","education", "maritalst",  "townsize", "prefecture", "rel_service")
+
+# process VIC and WVS survey data
+df1 <- df %>% 
+  drop_na(!!vars_cont, !!vars_nom_pref) %>% 
+  filter(!(is.na(EVI) & is.na(SVI))) %>% 
+  mutate(WVS = ifelse(wave == "WVS7", 1, 0),
+         VIC = ifelse(wave %in% c("VIC1", "VIC2"), 1, 0),
+         EVI = EVI_reduced) %>% 
+  filter(wave %in% c("WVS7", "VIC1"))
+
+# process census data
+census <- df_census %>% 
+  pivot_longer(cols = !contains("p") & !contains("s"), names_to = "age", values_to = "pop") %>%
+  mutate(age = as.numeric(age)) %>% 
+  mutate(prefecture = str_remove(prefecture, "-ken")) %>%
+  mutate(prefecture = case_when(
+    prefecture == "Kyoto-fu" ~ "Kyoto",
+    prefecture == "Oita"     ~ "Ooita",
+    prefecture == "Osaka-fu" ~ "Osaka",
+    prefecture == "Tokyo-to" ~ "Tokyo",
+    prefecture == "Gumma"    ~ "Gunma",
+    prefecture == "Ibaraki"  ~ "Ibaragi",
+    TRUE ~ prefecture
+  )) %>%
+  filter(age >= 18) %>% 
+  mutate(age_group = case_when(
+      age <= 35 ~ "18-35 years",
+      age <= 50 ~ "36-50 years",
+      TRUE      ~ "50+ years")) %>% 
+  mutate(pop_total_above18 = sum(pop)) %>% 
+  group_by(prefecture, sex, age_group) %>% 
+  summarise(pop = sum(pop),
+            pop_total_above18 = unique(pop_total_above18), .groups = "drop") %>% 
+  mutate(stratum_prop_pop = pop / pop_total_above18) %>% 
+  rename(gender = sex)
+
+# estimate weights using the user-defined function
+df1 <- add_poststrat_wgts(census, df1, add_iptw = TRUE)[[1]]
+
+# show results for respondent 'VIC706'
+df1 %>% 
+  filter(subject_id == "VIC706") %>% 
+  select(subject_id, propensit_total, contains("wgt") & contains("total"))
+```
+
+\normalsize
 
 \pagebreak
 
@@ -85,7 +145,7 @@ sum_tab %>%
 
 # Propensity score regression model {#prop}
 
-Table \@ref(tab:propmodtab) shows coefficient estimates and their standard errors from the logistic regression model used for estimation of propensity scores. The outcome variable was whether a respondent was surveyed in WVS7 (coded as 1) or in VIC1 (coded as 0) and the preidcted probabilities were used to contruct inverse probability of treatment weights for the WVS7-VIC1 comparison. Note that the size of estimates for two prefectures (Miyazaki, Tottori) and their uncertainty are extremely large, which is because the WVS7 sample does not include respondents from these two prefectures, which are rather small in terms of population. Hence, the model predicts low propensity scores for the few respondents from those prefectures in the VIC1 sample.
+Table \@ref(tab:propmodtab) shows coefficient estimates and their standard errors from the logistic regression model used for estimation of propensity scores. The outcome variable was whether a respondent was surveyed in WVS7 (coded as 1) or in VIC1 (coded as 0) and the predicted probabilities were used to contruct inverse probability of treatment weights for the WVS7-VIC1 comparison. Note that the size of estimates for two prefectures (Miyazaki, Tottori) and their standard errors are extremely large, which is because the WVS7 sample does not include respondents from these two prefectures, which are rather small in terms of population. Hence, the model predicts low propensity scores for the few respondents from those prefectures in the VIC1 sample.
 
 
 ```{r propmodtab}
@@ -101,7 +161,7 @@ propmod_tab %>%
 
 # Variation between prefectures
 
-Variation between prefectures in pandemic severity at the time of the first VIC survey in May 2020, defined as number of COVID-19 infections per 100,000 people, is shown in Figure \@ref(fig:map).
+Variation between prefectures in pandemic severity at the time of the first VIC survey in May 2020, defined as cumulative number of COVID-19 infections per 100,000 people, is shown in Figure \@ref(fig:map).
 
 \begin{figure}[H]
 \centering
@@ -110,7 +170,7 @@ Variation between prefectures in pandemic severity at the time of the first VIC 
 \label{fig:map}
 \end{figure}
 
-In Figure \@ref(fig:intact), we visualize the estimated effect of pandemic severity on change in societal values. In particular, we show how for an 'typical individual' from WVS7, defined by having the (marginal) median or mode in all covariates, the number of cumulative COVID-19 infections in the prefecture affects change in EVI and SVI, based on our outcome regressions shown in the main text. The difference in slopes displays the interaction effect of both variables (see Fig. 6 in the main text for estimated coefficients of the interaction effect). As should be expected under a well-specified model, the estimated number of infections that a prefecture *will* have at the point in time when the VIC1 survey is conducted (May 2020) is not related to societal values at the point in time when the WVS7 survey is conducted (September 2019), given the variables included in the model. This is indicated by the flat solid lines.
+In Figure \@ref(fig:intact), we visualize the estimated effect of pandemic severity on change in societal values. In particular, we show how for an 'typical individual' from WVS7 -- a person with median/mode value for all characteristics -- the number of cumulative COVID-19 infections in the prefecture affects change in EVI and SVI, based on our outcome regressions shown in the main text. The difference in slopes displays the interaction effect of both variables (see Fig. 6 in the main text for estimated coefficients of the interaction effect). As should be expected under a well-specified model, estimated societal values at the point in time when the WVS7 survey is conducted (September 2019) are independent of *future* COVID-19 severity at the point in time when the VIC1 survey is conducted (May 2020), given the variables included in the model. This is indicated by the flat solid lines.
 
 
 \begin{figure}[H]
@@ -135,7 +195,7 @@ As part of the analysis on individual-level variation in psychological distress,
 
 An advantage of the fixed effects approach is that time-invariant (but not time-variant) unobserved variation between individuals is controlled for, which eliminates further potential confounders - in particular, unobserved variables which differ between individuals, do not vary over time, are in a time-invariant way associated with both psychological distress and emancipative or secular values and whose effect is not yet captured by our other adjustment variables. A clear disadvantage in our setting is that the fixed effects approach can only exploit within-individual variation in distress between VIC1 and VIC2 (which is comparably low, see main text) and therefore discards all (co-)variation in distress and values that occurred during the initial onset of the COVID-19 pandemic (i.e., between WVS7 and VIC1). This fact limits its efficiency. Nevertheless, also in the fixed effect models we see a negative relationship between psychological distress and emancipative values (Figure \@ref(fig:fe)): People whose distress decreased between May 2020 and April 2021 on average also report higher emancipative values in April 2021 than in May 2020, most strikingly in terms of gender equality.
 
-For SVI and its items, there is no clear evidence for an association (Figure \@ref(fig:fe)). This differs from the results of the between-individual analysis (main text, Fig. 7), which are more in line with all the other results presented in the main text. We cannot give definitive explanations for the deviating results in the fixed-effect analysis of secular values. For the outlined reasons of non-random drop-out^[People with higher distress at VIC1 were more likely to subsequently drop out of the VIC survey (see main text) and there is also evidence for drop-outs being less secular at VIC1 than people who remained in the sample until VIC2 ($65.2$ vs. $66.5$  points, $p = 0.026$). A similar relationship is not found with respect to emancipative values ($61.5$ vs. $61.6$ points, $p = 0.84$).], sample size and extent of variation in exposure, we generally favor the between-individual analysis presented in the main text, but acknowledge that results in Figure \@ref(fig:fe) cast some additional uncertainty on the strength and existence of individual-level effects of psychological distress on religious values.
+For SVI and its items, there is no clear evidence for an association (Figure \@ref(fig:fe)). This differs from the results of the between-individual analysis (main text, Fig. 7), which are more in line with all the other results presented in the main text. We cannot give definitive explanations for the deviating results in the fixed-effect analysis of secular values. For the outlined reasons of non-random drop-out^[People with higher distress at VIC1 were more likely to subsequently drop out of the VIC survey panel (see main text) and there is also evidence for drop-outs being less secular at VIC1 than people who remained in the sample until VIC2 (mean SVI: `r format(round(mean(df$SVI[df$participation == "Both W1 and W2" & df$wave == "VIC1"]),1),nsmall=1)` vs. `r format(round(mean(df$SVI[df$participation=="W1 only"]),1),nsmall=1)`, $p =$ `r format(round(t.test(df$SVI[df$participation=="Both W1 and W2" & df$wave == "VIC1"], df$SVI[df$participation=="W1 only"])$p.val,3),3)`). A similar relationship is not found with respect to emancipative values (mean EVI: `r format(round(mean(df$EVI[df$participation == "Both W1 and W2" & df$wave == "VIC1"]),1),nsmall=1)` vs. `r format(round(mean(df$EVI[df$participation=="W1 only"]),1),nsmall=1)`, $p =$ `r format(round(t.test(df$EVI[df$participation=="Both W1 and W2" & df$wave == "VIC1"], df$EVI[df$participation=="W1 only"])$p.val,3),3)`).], sample size and extent of variation in exposure, we generally favor the between-individual analysis presented in the main text, but acknowledge that results in Figure \@ref(fig:fe) cast some additional uncertainty on the strength and existence of individual-level effects of psychological distress on religious values.
 
 \pagebreak
 
