@@ -237,7 +237,8 @@ propensit_stripe <- ggplot() +
         legend.position = "bottom",
         text = element_text(family = "Segoe UI Semilight")) +
   labs(y = "Estimated probability of being surveyed in WVS7",
-       x = "")
+       x = "") +
+  scale_y_continuous(breaks = seq(0,1,0.2))
 
 wvs_margin <- ggplot(df1 %>% filter(WVS == 1)) +
   geom_density(aes(x = propensit_total), show.legend = FALSE, fill = "grey70",
@@ -246,7 +247,9 @@ wvs_margin <- ggplot(df1 %>% filter(WVS == 1)) +
   theme_void(base_size = 13) +
   coord_flip() +
   scale_y_reverse() +
-  theme(text = element_text(family = "Segoe UI Semilight")) +
+  theme(text = element_text(family = "Segoe UI Semilight"),
+        plot.title = element_text(vjust = 3),
+        plot.title.position = "plot") +
   labs(title = "a")
 
 vic1_margin <- ggplot(df1 %>% filter(WVS == 0)) +
