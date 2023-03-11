@@ -1,18 +1,18 @@
 # load libraries
-library(tidyverse)   # v1.3.1
-library(fastDummies) # v1.6.3
-library(broomExtra)  # v4.3.2 
-library(ggrepel)     # v0.9.1    
-library(gghalves)    # v0.1.3
-library(estimatr)    # v1.0.0   
-library(lme4)        # v1.1-29
-library(matrixStats) # v0.62.0
-library(gtsummary)   # v1.6.1 
-library(patchwork)   # v1.1.1 
-library(sf)          # v1.0-7
-library(scales)      # v1.2.0
-library(pROC)        # v1.18.0
-library(extrafont)   # v0.18 
+library(tidyverse)   # CRAN v2.0.0   
+library(fastDummies) # CRAN v1.6.3 
+library(broomExtra)  # CRAN v4.3.2  
+library(ggrepel)     # CRAN v0.9.3     
+library(gghalves)    # CRAN v0.1.4    
+library(estimatr)    # CRAN v1.0.0    
+library(lme4)        # CRAN v1.1-31        
+library(matrixStats) # CRAN v0.63.0 
+library(gtsummary)   # CRAN v1.7.0   
+library(patchwork)   # CRAN v1.1.2   
+library(sf)          # CRAN v1.0-9          
+library(scales)      # CRAN v1.2.1      
+library(pROC)        # CRAN v1.18.0        
+library(extrafont)   # CRAN v0.19   
 loadfonts(device = "win")
 
 # load functions
@@ -230,27 +230,30 @@ dev.off()
 
 # plotting propensity score overlap
 propensit_stripe <- ggplot() +
-  geom_line(data = df1, aes(x = wave, y = propensit_total), alpha = 0.03) +
-  geom_jitter(data = df1, aes(x = wave, y = propensit_total), width = 0.08, height = 0, size = 0.5) +
+  geom_jitter(data = df1, aes(x = wave, y = propensit_total), 
+              alpha = 0.25, width = 0.08, height = 0, size = 0.5) +
   theme_minimal(base_size = 13) +
   theme(panel.grid = element_blank(),
         legend.position = "bottom",
         text = element_text(family = "Segoe UI Semilight")) +
   labs(y = "Estimated probability of being surveyed in WVS7",
-       x = "",
-       title = "a")
+       x = "")
 
 wvs_margin <- ggplot(df1 %>% filter(WVS == 1)) +
-  geom_density(aes(x = propensit_total), show.legend = FALSE) +
-  theme_void() +
+  geom_density(aes(x = propensit_total), show.legend = FALSE, fill = "grey70",
+               alpha = 1/2,
+               bounds = c(0,1)) +
+  theme_void(base_size = 13) +
   coord_flip() +
   scale_y_reverse() +
-  theme(plot.title.position = "plot",
-        text = element_text(family = "Segoe UI Semilight"))
+  theme(text = element_text(family = "Segoe UI Semilight")) +
+  labs(title = "a")
 
 vic1_margin <- ggplot(df1 %>% filter(WVS == 0)) +
-  geom_density(aes(x = propensit_total), show.legend = FALSE) +
-  theme_void() +
+  geom_density(aes(x = propensit_total), show.legend = FALSE, fill = "grey70",
+               alpha = 1/2,
+               bounds = c(0,1)) +
+  theme_void(base_size = 13) +
   coord_flip()
 
 p_scores <- wvs_margin + propensit_stripe + vic1_margin + plot_layout(ncol = 3, nrow = 1)
@@ -368,11 +371,12 @@ p_smd <- rbind(d_unweighted %>% mutate(source = "Unweighted"),
        y = "Abs. std. mean difference",
        col = "",
        title = "b") +
-  scale_color_manual(values = c("grey70", "black"))
+  scale_color_manual(values = c("grey70", "black")) +
+  guides(color = guide_legend(ncol = 1))
 
-p_overlap <- p_scores + p_smd + plot_layout(ncol = 4, widths = c(1/3, 6/5, 1/3, 7/4))
+p_overlap <- p_scores + p_smd + plot_layout(ncol = 4, widths = c(0.8, 1.2, 0.8, 2.5))
 
-png("results/p_overlap.png", width = 3300, height = 2500, res = 410)
+png("results/p_overlap.png", width = 3400, height = 2500, res = 440)
 print(p_overlap)
 dev.off()
 
@@ -388,7 +392,7 @@ mods <- map_dfr(outcome, .id = "outcome", function(x){
     data <- df1 %>% filter(!is.na(SVI))
     data$wgt <- data$wgt_combined_SVI
   }
-  
+
   m <- lm_robust(as.formula(paste(x, "~ VIC +",
                                   paste(c(vars_cont, vars_nom_reg, "age_sq"),
                                         collapse = "+"), sep ="")),
@@ -396,7 +400,11 @@ mods <- map_dfr(outcome, .id = "outcome", function(x){
                  weights = wgt/mean(wgt),
                  se_type = "stata")
   
-  bind_cols(tidy(m), glance(m))})
+  print(paste0("model estimated \u2713 (", x, ")"))
+  res <- bind_cols(tidy(m), glance(m) %>% select(-statistic, -p.value))
+  return(res)
+  
+  })
 
 # forest plots
 forestA <- forestplots(mods      = mods %>% filter(outcome %in% outcome_EVI),
@@ -458,9 +466,13 @@ mods_vic2_remained <- map_dfr(outcome, .id = "outcome", function(x){
                  weights = wgt/mean(wgt),
                  se_type = "stata")
   
-  bind_cols(tidy(m), glance(m))})
+  print(paste0("model estimated \u2713 (", x, ")"))
+  res <- bind_cols(tidy(m), glance(m) %>% select(-statistic, -p.value))
+  return(res)
+  })
 
 # wvs7 vs. vic2: model estimation (remaining sample + refreshment sample)
+
 df2 <- add_poststrat_wgts(census, df2, add_iptw = TRUE)[[1]]
 
 mods_vic2_full <- map_dfr(outcome, .id = "outcome", function(x){
@@ -482,7 +494,10 @@ mods_vic2_full <- map_dfr(outcome, .id = "outcome", function(x){
                  weights = wgt / mean(wgt),
                  se_type = "stata")
   
-  bind_cols(tidy(m), glance(m))})
+    print(paste0("model estimated \u2713 (", x, ")"))
+  res <- bind_cols(tidy(m), glance(m) %>% select(-statistic, -p.value))
+  return(res)
+  })
 
 # plotting comparison over repeated surveys
 modres <- rbind(mods %>% 
@@ -547,7 +562,10 @@ mods_pref <- map_dfr(outcome, .id = "outcome", function(x){
                  clusters = prefecture, 
                  se_type = "stata"
   ) 
-  bind_cols(tidy(m), glance(m))})
+    print(paste0("model estimated \u2713 (", x, ")"))
+  res <- bind_cols(tidy(m), glance(m) %>% select(-statistic, -p.value))
+  return(res)
+  })
 
 # forest plots
 forest_intc_A <- forestplots(mods      = mods_pref %>% filter(outcome %in% outcome_EVI),
@@ -679,7 +697,9 @@ mods_psych <- map_dfr(outcome_long, .id = "outcome", function(x){
                  se_type = "stata"
   )
   
-  bind_cols(tidy(m), glance(m))
+    print(paste0("model estimated \u2713 (", x, ")"))
+  res <- bind_cols(tidy(m), glance(m) %>% select(-statistic, -p.value))
+  return(res)
   }) %>% mutate(analysis = NA)
 
 # forest plots (between)
@@ -745,7 +765,9 @@ mods_psych_within <- map_dfr(outcome_long, .id = "outcome", function(x){
                  se_type = "stata"
   )
 
-  bind_cols(tidy(m), glance(m))
+    print(paste0("model estimated \u2713 (", x, ")"))
+  res <- bind_cols(tidy(m), glance(m) %>% select(-statistic, -p.value))
+  return(res)
 }) %>% mutate(analysis = NA,
               nobs = nobs/2) # sample size as subjects
 
@@ -820,7 +842,7 @@ p_jpn <- df_longitud %>%
 set.seed(123)
 p_nations <- df_longitud %>% 
   mutate(is_japan = ifelse(countryname == "Japan", TRUE, FALSE)) %>% 
-  filter(wave=="WVS7") %>% 
+  filter(wave=="WVS7", !is.na(EVI), !is.na(SVI)) %>% 
   ggplot() + 
   geom_point(aes(x = SVI, y = EVI, col = is_japan), size = 2.5, show.legend = FALSE) + 
   geom_label_repel(data = df_longitud %>% 
@@ -829,7 +851,7 @@ p_nations <- df_longitud %>%
                    family = "Segoe UI Semilight") + 
   
   geom_text_repel(data = df_longitud %>% 
-                    filter(countryname != "Japan", wave=="WVS7"),
+                    filter(countryname != "Japan", wave=="WVS7", !is.na(EVI), !is.na(SVI)),
                   aes(x = SVI, y = EVI, label = countryname), col = "black", size = 2.5, max.overlaps = 200,
                   show.legend = FALSE,
                   box.padding = 0.25,
@@ -847,7 +869,7 @@ p_nations <- df_longitud %>%
 p_nations_trend <- (p_nations  + labs(title = "a")+ theme(plot.title.position = "plot")) +
   (p_jpn + labs(title = "b")+ theme(plot.title.position = "plot"))
 
-png("results/p_nations_trend.png", width = 4400, height = 2300, res = 430)
+png("results/p_nations_trend.png", width = 4400, height = 2300, res = 440)
 print(p_nations_trend)
 dev.off()
 
@@ -987,7 +1009,7 @@ p_map <- df_japan_lev1 %>%
                   family = "Segoe UI Semilight")
 
 png("results/p_map.png", width = 3000, height = 3000, res = 300)
-p_map
+print(p_map)
 dev.off()
 
 #####################################
