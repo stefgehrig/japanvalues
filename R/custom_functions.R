@@ -6,8 +6,13 @@ parents_proud_label  <- "Parents proud not goal"
 respect_author_label <- "Disrespect authority"
 
 # factor coding and ordering in one function from https://rdrr.io/github/svmiller/stevemisc/src/R/misc.R
-fct_reorg <- function(fac, ...) { 
-  fct_recode(fct_relevel(fac, ...), ...)
+fct_reorg <- function(fac, ...) {
+  dots <- unname(list(...))
+  
+  fac <- do.call("fct_relevel", c(list(fac), dots))
+  fac <- fct_recode(fac, ...)
+  fac
+  
 }
 
 # strict rounding
@@ -793,19 +798,19 @@ add_poststrat_wgts <- function(censusdata,
                                     collapse = " + ", sep = "")),
                          data = sampledata,
                          weights = popwgt_total/mean(popwgt_total),
-                         family = binomial)
+                         family = quasibinomial)
     
     propmod_EVI   <- glm(as.formula(paste(c("WVS ~ ", vars_cont, vars_nom_pref),
                                           collapse = " + ", sep = "")),
                          data =  sampledata %>% filter(!is.na(EVI)),
                          weights = popwgt_EVI/mean(popwgt_EVI),
-                         family = binomial)
+                         family = quasibinomial)
     
     propmod_SVI   <- glm(as.formula(paste(c("WVS ~ ", vars_cont, vars_nom_pref),
                                           collapse = " + ", sep = "")),
                          data =  sampledata %>% filter(!is.na(SVI)),
                          weights = popwgt_SVI/mean(popwgt_SVI),
-                         family = binomial)
+                         family = quasibinomial)
     
     tmp_EVI <- sampledata %>% filter(!is.na(EVI)) %>% 
       mutate(propensit_EVI = as.numeric(unname(predict(propmod_EVI, type = "response")))) %>% 
