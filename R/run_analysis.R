@@ -44,7 +44,7 @@ vars_cont     <- c("age", "children", "hhsize")
 vars_nom_pref <- c("gender","education", "maritalst",  "townsize", "prefecture", "rel_service")
 vars_nom_reg  <- c("gender","education", "maritalst",  "townsize", "region",     "rel_service")
 vars_bfive    <- c(names(df)[grepl("bfive", names(df))], "distress")
-vars_psych    <- c(vars_cont, vars_nom_reg, "hhincome", vars_bfive)
+vars_psych    <- c(vars_cont, vars_nom_pref, "hhincome", vars_bfive)
 
 ###############################
 ###############################
@@ -397,7 +397,7 @@ mods <- map_dfr(outcome, .id = "outcome", function(x){
   }
 
   m <- lm_robust(as.formula(paste(x, "~ VIC +",
-                                  paste(c(vars_cont, vars_nom_reg, "age_sq"),
+                                  paste(c(vars_cont, vars_nom_pref, "age_sq"),
                                         collapse = "+"), sep ="")),
                  data = data,
                  weights = wgt/mean(wgt),
@@ -463,7 +463,7 @@ mods_vic2_remained <- map_dfr(outcome, .id = "outcome", function(x){
   }
   
   m <- lm_robust(as.formula(paste(x, "~ VIC +",
-                                  paste(c(vars_cont, vars_nom_reg, "age_sq"),
+                                  paste(c(vars_cont, vars_nom_pref, "age_sq"),
                                         collapse = "+"), sep ="")),
                  data = data,
                  weights = wgt/mean(wgt),
@@ -475,7 +475,6 @@ mods_vic2_remained <- map_dfr(outcome, .id = "outcome", function(x){
   })
 
 # wvs7 vs. vic2: model estimation (remaining sample + refreshment sample)
-
 df2 <- add_poststrat_wgts(census, df2, add_iptw = TRUE)[[1]]
 
 mods_vic2_full <- map_dfr(outcome, .id = "outcome", function(x){
@@ -491,7 +490,7 @@ mods_vic2_full <- map_dfr(outcome, .id = "outcome", function(x){
   }
   
   m <- lm_robust(as.formula(paste(x, "~ VIC +",
-                                  paste(c(vars_cont, vars_nom_reg, "age_sq"),
+                                  paste(c(vars_cont, vars_nom_pref, "age_sq"),
                                         collapse = "+"), sep ="")),
                  data = data,
                  weights = wgt / mean(wgt),
@@ -543,7 +542,6 @@ dev.off()
 #### Prefecture-level Variation in Change ####
 ##############################################
 ##############################################
-
 # prefecture interaction effect: model estimation
 mods_pref <- map_dfr(outcome, .id = "outcome", function(x){
 
@@ -668,7 +666,6 @@ dev.off()
 #### Individual-level Psychological Distress ####
 #################################################
 #################################################
-
 # between-individual analysis
 df3 <-  df %>% 
   drop_na(all_of(vars_psych)) %>% 
@@ -692,7 +689,7 @@ mods_psych <- map_dfr(outcome_long, .id = "outcome", function(x){
     data <- df3 %>% filter(!is.na(SVI))  
     data$wgt <- data$popwgt_SVI
   }
-  
+
   m <- lm_robust(as.formula(paste(x, "~ distress + wave +", paste(c(vars_psych),
                                                                   collapse = "+"), sep ="")),
                  data = data,
@@ -1027,11 +1024,14 @@ summary(df$distress)
 # 1.000   1.000     1.400     1.673   2.000     4.000    1353 
 sd(df$distress, na.rm = TRUE) # 0.8319614
 
-# correlations cumulative infections at VIC 1 with other prefecture data
+# statistics cumulative infections at VIC 1 and correlations with other prefecture-level data
 df %>% 
   filter(!duplicated(prefecture)) %>% 
-  summarise(cor(cum_infected_in_pref_VIC1, cum_deaths_in_pref_VIC1), # 0.904
-            cor(cum_infected_in_pref_VIC1, emergency_in_pref_VIC1))  # 0.620
+  summarise(r1 = cor(cum_infected_in_pref_VIC1, cum_deaths_in_pref_VIC1), # 0.904
+            r2 = cor(cum_infected_in_pref_VIC1, emergency_in_pref_VIC1),  # 0.620
+            mean = mean(cum_infected_in_pref_VIC1), # 7.8
+            median = median(cum_infected_in_pref_VIC1), # 5.9
+            sd = sd(cum_infected_in_pref_VIC1)) # 7.4
 
 # correlations of age and EVI/SVI among WVS7 respondents
 df %>% 
