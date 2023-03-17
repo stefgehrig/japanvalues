@@ -1,5 +1,6 @@
 ---
-title: "Appendix for 'The COVID-19 Pandemic Revived Traditional Values in Japan'"
+title: "Appendix for"
+subtitle: "*The COVID-19 Pandemic Revived Traditional Values in Japan*"
 author: "Plamen Akaliyski, Naoko Taniguchi, Joonha Park, Stefan Gehrig, Raül Tormos"
 documentclass: article
 output:
