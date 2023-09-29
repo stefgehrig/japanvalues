@@ -31,7 +31,7 @@ subject_id | Unique subject ID, including identifier of survey (WVS for World Va
 wave | Survey wave (WVS7, VIC1 or VIC2)
 participation | All survey waves the respondent participated in (W0 refers to WVS7, W1 to VIC1 and W2 to VIC2)
 EVI | Emancipative Values Index (based on six items)
-EVI_reduced | short version of the Emancipative Values Index (based on four items)
+EVI_reduced | Short version of the Emancipative Values Index (based on four items)
 equal_polit | Item: Gender equality politics (scaled between 0 and 100)
 equal_job | Item: Gender equality jobs (scaled between 0 and 100)
 equal_educ | Item: Gender equality education (scaled between 0 and 100)
