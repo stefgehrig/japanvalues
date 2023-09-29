@@ -1,35 +1,41 @@
 # load libraries
-library(tidyverse)   # CRAN v2.0.0   
-library(fastDummies) # CRAN v1.6.3 
-library(broomExtra)  # CRAN v4.3.2  
-library(ggrepel)     # CRAN v0.9.3     
-library(gghalves)    # CRAN v0.1.4    
-library(estimatr)    # CRAN v1.0.0    
-library(lme4)        # CRAN v1.1-31        
-library(matrixStats) # CRAN v0.63.0 
-library(gtsummary)   # CRAN v1.7.0   
-library(patchwork)   # CRAN v1.1.2   
-library(sf)          # CRAN v1.0-9          
-library(scales)      # CRAN v1.2.1      
-library(pROC)        # CRAN v1.18.0        
-library(extrafont)   # CRAN v0.19   
+library(tidyverse)   # CRAN v2.0.0e
+library(fastDummies) # CRAN v1.7.3
+library(broomExtra)  # CRAN v4.3.2
+library(ggrepel)     # CRAN v0.9.3
+library(gghalves)    # CRAN v0.1.4
+library(estimatr)    # CRAN v1.0.0
+library(lme4)        # CRAN v1.1-34
+library(matrixStats) # CRAN v1.0.0
+library(gtsummary)   # CRAN v1.7.2
+library(patchwork)   # CRAN v1.1.3
+library(sf)          # CRAN v1.0-14
+library(scales)      # CRAN v1.2.1
+library(pROC)        # CRAN v1.18.4
+library(extrafont)   # CRAN v0.19
 loadfonts(device = "win")
 
 # load functions
 source("R/custom_functions.R")
 
+#####################
+#### data import ####
+#####################
 # load survey data
-df <- read_csv("data/surveydata.csv", guess_max = 1500)
+df <- read_csv("data/surveydata.csv", guess_max = 2e3)
 
-# load census data (downloaded from https://www.e-stat.go.jp on 2022-07-08, "Update Date: 2021-11-30")
+# load census data (accessed from https://www.e-stat.go.jp, 2022-07-08)
 df_census <- read_csv2("data/jp_census_2020_age_sex_pref.csv") 
 
-# load wvs longitudinal values data (based on "WVS_TimeSeries_1981_2022_Rds_v3_0.rds")
+# load wvs longitudinal values data (computed based on WVS trend file v3.0; see https://www.worldvaluessurvey.org/WVSEVStrend.jsp)
 df_longitud <- read_csv("data/values_wvs_longitudinal.csv")
 
-# load japan shape data frame (downloaded from https://data.humdata.org/ on 2022-07-08)
+# load japan shape data frame (accessed from https://data.humdata.org/, 2022-07-08)
 japan_lev1 <- readRDS("data/japan_lev1.rds")
 
+###########################################
+#### predictor and outcome definitions ####
+###########################################
 # define outcome variables
 outcome_EVI         <- c("EVI", "equal_educ", "homosexuality", "abortion", "divorce")
 outcome_EVI_long    <- c("EVI", "equal_educ", "equal_polit", "equal_job", "homosexuality", "abortion", "divorce")
@@ -46,12 +52,29 @@ vars_nom_reg  <- c("gender","education", "maritalst",  "townsize", "region",    
 vars_bfive    <- c(names(df)[grepl("bfive", names(df))], "distress")
 vars_psych    <- c(vars_cont, vars_nom_pref, "hhincome", vars_bfive)
 
-###############################
-###############################
-#### National-level Change ####
-###############################
-###############################
+#####################################
+#### labels for index components ####
+#####################################
+# labels for EVI items (short)
+equal_educ_label    <- "Gender equality education"
+homosexuality_label <- "Acceptance homosexuality"
+abortion_label      <- "Acceptance abortion"
+divorce_label       <- "Acceptance divorce"
 
+# labels for EVI items (long)
+equal_polit_label   <- "Gender equality politics"
+equal_job_label     <- "Gender equality jobs"
+
+# labels for SVI items
+rel_imp_label        <- "Religion not imp."
+rel_person_label     <- "Not a religious person"
+nation_pride_label   <- "Not proud of nation"
+parents_proud_label  <- "Parents proud not goal"
+respect_author_label <- "Disrespect authority"
+
+###########################################
+#### analysis 1: national-level change ####
+###########################################
 # filter for sufficiently complete cases
 df_filt <- df %>% 
   drop_na(!!vars_cont, !!vars_nom_pref) %>% 
@@ -61,7 +84,7 @@ df_filt <- df %>%
 df_filt <- df_filt %>% 
   mutate(WVS = ifelse(wave == "WVS7", 1, 0),
          VIC = ifelse(wave %in% c("VIC1", "VIC2"), 1, 0),
-         EVI = EVI_reduced) # for this analysis, reduced version of EVI is needed from VIC respondents
+         EVI = EVI_reduced) # for this analysis, short version of EVI is needed from VIC respondents
 
 # split in two datasets
 df1 <- df_filt %>% filter(wave %in% c("WVS7", "VIC1"))
@@ -101,7 +124,7 @@ df1 <- df1_wgts_added[[1]]
 # plotting covariate distributions in samples
 df1$wave <- factor(df1$wave, ordered = TRUE, levels = c("WVS7", "VIC1"))
 
-p_balance <- df1 %>%
+df_balanceplot <- df1 %>%
   select(!!vars_nom_reg | !!vars_cont | wave) %>%
   mutate(age = as.character(cut_interval(age, length = 10)),
          hhsize = as.factor(as.character(hhsize)),
@@ -141,8 +164,9 @@ p_balance <- df1 %>%
                             "Vocational school"                = "Vocational school/University-preparator",
                             "University-level"                 = "University-level education",
                             "Master or Doctoral degree"        = "Master or Doctoral degree")) %>%
+  # fix order of levels, in order of covariates
   mutate(value = factor(value, ordered = TRUE, levels = c(
-    
+   
     "Primary or Junior high school",
     "High school",
     "Vocational school",
@@ -202,7 +226,9 @@ p_balance <- df1 %>%
     "Kansai",
     "Chugoku",
     "Shikoku",
-    "Kyushu and Okinawa"))) %>%
+    "Kyushu and Okinawa"))) 
+
+p_balance <- df_balanceplot %>%
   ggplot() +
   geom_bar(aes(x = value, fill = wave, y = prop), stat = "identity", position = "dodge", width = 0.4) +
   facet_wrap(~ covariate, scales = "free", nrow = 3) +
@@ -377,6 +403,7 @@ p_smd <- rbind(d_unweighted %>% mutate(source = "Unweighted"),
   scale_color_manual(values = c("grey70", "black")) +
   guides(color = guide_legend(ncol = 1))
 
+# combine plots into one figure
 p_overlap <- p_scores + p_smd + plot_layout(ncol = 4, widths = c(0.8, 1.2, 0.8, 2.5))
 
 png("results/p_overlap.png", width = 3400, height = 2500, res = 440)
@@ -409,7 +436,7 @@ mods <- map_dfr(outcome, .id = "outcome", function(x){
   
   })
 
-# forest plots
+# coefficient plots
 forestA <- forestplots(mods      = mods %>% filter(outcome %in% outcome_EVI),
                        version   = "EVI",
                        color     = "slateblue",
@@ -441,12 +468,13 @@ violinB <- violinplots(data      = df1 %>% filter(!is.na(SVI)),
                        y_label   = "SECULAR VALUES",
                        plotlabel = "c")
 
+# combine plots into one figure
 p_coeff_models1 <- ((violinA/violinB) | (forestA/forestB)) + plot_layout(widths = c(4/5, 2))
 png("results/p_coeff_models1.png", width = 3550, height = 1600, res = 380)
 print(p_coeff_models1)
 dev.off()
 
-# wvs7 vs. vic2: model estimation (remaining sample)
+# wvs7 vs. vic2: model estimation (participants remaining in sample)
 df2_remained <- df_filt %>% filter(participation %in% c("W0 only", "Both W1 and W2") & wave %in% c("WVS7", "VIC2"))
 df2_remained <- add_poststrat_wgts(census, df2_remained, add_iptw = TRUE)[[1]]
 
@@ -474,7 +502,7 @@ mods_vic2_remained <- map_dfr(outcome, .id = "outcome", function(x){
   return(res)
   })
 
-# wvs7 vs. vic2: model estimation (remaining sample + refreshment sample)
+# wvs7 vs. vic2: model estimation (participants remaining in sample + participants from refreshment sample)
 df2 <- add_poststrat_wgts(census, df2, add_iptw = TRUE)[[1]]
 
 mods_vic2_full <- map_dfr(outcome, .id = "outcome", function(x){
@@ -537,11 +565,9 @@ png("results/p_repeated.png", width = 4300, height = 2500, res = 425)
 print(p_repeated)
 dev.off()
 
-##############################################
-##############################################
-#### Prefecture-level Variation in Change ####
-##############################################
-##############################################
+################################################
+#### analysis 2: prefecture-level variation ####
+################################################
 # prefecture interaction effect: model estimation
 mods_pref <- map_dfr(outcome, .id = "outcome", function(x){
 
@@ -622,6 +648,7 @@ pred_values <- map_dfr(outcome, .id = "outcome", function(x){
   data_wvs <- data %>% filter(wave == "WVS7")
   
   newdata <- tibble(
+    # create data grid of "typical" individual for prediction (median and mode)
     VIC                       = c(rep(0,pred_ticks),rep(1,pred_ticks)),
     cum_infected_in_pref_VIC1 = rep(seq(0, 50, length.out=pred_ticks),2),
     age                       = rep(weightedMedian(data_wvs$age,         data_wvs$wgt),    pred_ticks*2),
@@ -661,11 +688,9 @@ png("results/p_predvalues.png", width = 3000, height = 1900, res = 420)
 print(p_predvalues)
 dev.off()
 
-#################################################
-#################################################
-#### Individual-level Psychological Distress ####
-#################################################
-#################################################
+#############################################################
+#### analysis 3: individual-level psychological distress ####
+#############################################################
 # between-individual analysis
 df3 <-  df %>% 
   drop_na(all_of(vars_psych)) %>% 
@@ -678,7 +703,7 @@ df3 <-  df %>%
 
 df3 <- add_poststrat_wgts(census, df3, add_iptw = FALSE)
 
-# psychological distress effect: model estimation (between)
+# psychological distress effect: model estimation (between analysis)
 mods_psych <- map_dfr(outcome_long, .id = "outcome", function(x){
   
   if(x %in% outcome_EVI_long){
@@ -702,7 +727,7 @@ mods_psych <- map_dfr(outcome_long, .id = "outcome", function(x){
   return(res)
   }) %>% mutate(analysis = NA)
 
-# forest plots (between)
+# forest plots (between analysis)
 forestA <- forestplots_psych(mods      = mods_psych %>% filter(outcome %in% outcome_EVI_long),
                              version   = "EVI", 
                              color     = "slateblue", 
@@ -729,7 +754,7 @@ print(p_coeff_models3)
 dev.off()
 
 # within-individual analysis
-# psychological distress effect: model estimation (within)
+# psychological distress effect: model estimation (within analysis)
 mods_psych_within <- map_dfr(outcome_long, .id = "outcome", function(x){
 
   if(x %in% outcome_EVI_long){
@@ -771,7 +796,7 @@ mods_psych_within <- map_dfr(outcome_long, .id = "outcome", function(x){
 }) %>% mutate(analysis = NA,
               nobs = nobs/2) # sample size as subjects
 
-# forest plots
+# forest plots (within analysis)
 forestA <- forestplots_psych(mods      = mods_psych_within %>% filter(outcome %in% outcome_EVI_long),
                              version   = "EVI",
                              color     = "slateblue",
@@ -797,12 +822,9 @@ png("results/p_coeff_models4.png", width = 2800, height = 1500, res = 365)
 print(p_coeff_models4)
 dev.off()
 
-#################################
-#################################
-#### More Figures and Tables ####
-#################################
-#################################
-
+####################################
+#### further figures and tables ####
+####################################
 # add year of japan's survey implementations for each wave
 df_longitud  <- df_longitud %>%  mutate(surveyyear_jpn = case_when(
   wave == "WVS3" ~ 1995,
@@ -1012,32 +1034,44 @@ png("results/p_map.png", width = 3000, height = 3000, res = 300)
 print(p_map)
 dev.off()
 
-#####################################
-#####################################
-#### Some more simple statistics ####
-#####################################
-#####################################
-
+##########################################################
+#### further statistics/results mentioned in the text ####
+##########################################################
 # descriptive statistics psychological distress
-summary(df$distress)
-# Min.    1st Qu.   Median    Mean    3rd Qu.    Max.    NA's 
-# 1.000   1.000     1.400     1.673   2.000     4.000    1353 
-sd(df$distress, na.rm = TRUE) # 0.8319614
+df %>% 
+  filter(!is.na(distress)) %>% 
+  summarise(across(.cols = distress,
+                   .fns = list(min=min, max=max, median=median, mean=mean, sd=sd))) %>% 
+  t() %>% round(2)
+# distress_min    1.00
+# distress_max    4.00
+# distress_median 1.40
+# distress_mean   1.67
+# distress_sd     0.83
 
-# statistics cumulative infections at VIC 1 and correlations with other prefecture-level data
+# descriptive statistics cumulative infections at VIC 1 and correlations with other prefecture-level data
 df %>% 
   filter(!duplicated(prefecture)) %>% 
-  summarise(r1 = cor(cum_infected_in_pref_VIC1, cum_deaths_in_pref_VIC1), # 0.904
-            r2 = cor(cum_infected_in_pref_VIC1, emergency_in_pref_VIC1),  # 0.620
-            mean = mean(cum_infected_in_pref_VIC1), # 7.8
-            median = median(cum_infected_in_pref_VIC1), # 5.9
-            sd = sd(cum_infected_in_pref_VIC1)) # 7.4
+  summarise(r1 = cor(cum_infected_in_pref_VIC1, cum_deaths_in_pref_VIC1),
+            r2 = cor(cum_infected_in_pref_VIC1, emergency_in_pref_VIC1),
+            mean = mean(cum_infected_in_pref_VIC1),
+            median = median(cum_infected_in_pref_VIC1),
+            sd = sd(cum_infected_in_pref_VIC1)) %>% 
+  t() %>% round(2)
+# r1     0.90
+# r2     0.62
+# mean   7.82
+# median 5.86
+# sd     7.39
 
 # correlations of age and EVI/SVI among WVS7 respondents
 df %>% 
   filter(wave == "WVS7") %>% 
-  summarise(cor(age, EVI, use = "pair"), # -0.327 
-            cor(age, SVI, use = "pair")) # -0.282
+  summarise(cor(age, EVI, use = "pair"),
+            cor(age, SVI, use = "pair"))  %>% 
+  t() %>% round(2)
+# cor(age, EVI, use = "pair") -0.33
+# cor(age, SVI, use = "pair") -0.28
 
 # distress comparisons between retained and drop-outs, as well as retained and replacements
 t.test(df$distress[df$participation=="Both W1 and W2" & df$wave == "VIC1"], 
@@ -1072,14 +1106,28 @@ vars <- as_tibble(summary(lmm)$varcor)
 vars$vcov[vars$grp=="subject_id"] / 
   (vars$vcov[vars$grp=="subject_id"] + vars$vcov[vars$grp=="Residual"]) # 0.5259601
 
-# the single respondent for illustration (Appendix A)
+# example of combined weight estimation: single respondent for illustration
 df1 %>% 
   filter(subject_id == "VIC706") %>% 
   select(all_of(c(vars_cont, vars_nom_pref)), 
-         propensit_total, wgt_att_total, stratum_prop_samp_total, stratum_prop_pop, popwgt_total)
+         propensit_total, wgt_att_total, stratum_prop_samp_total, stratum_prop_pop, popwgt_total) %>% t()
+# age                     "65"                      
+# children                "3"                       
+# hhsize                  "2"                       
+# gender                  "Female"                  
+# education               "High school"             
+# maritalst               "Married"                 
+# townsize                "500,000 and more"        
+# prefecture              "Hyogo"                   
+# rel_service             "Only on special holidays"
+# propensit_total         "0.5769099"               
+# wgt_att_total           "1.363562"                
+# stratum_prop_samp_total "0.006506849"             
+# stratum_prop_pop        "0.01314478"              
+# popwgt_total            "2.020146"  
 
-# between-individual analysis of distress when removing nation_pride from SVI
-data <- df3 %>% filter(!is.na(SVI))  
+# between-individual analysis of distress robustness check: removing nation_pride from SVI
+data <- df3 %>% filter(!is.na(SVI)) 
 data$wgt <- data$popwgt_SVI
 
 data$defiance <- (data$parents_proud + data$respect_author) / 2
@@ -1093,4 +1141,13 @@ m <- lm_robust(as.formula(paste(x, "~ distress + wave +", paste(c(vars_psych),
                weights = wgt/mean(wgt),
                se_type = "stata"
                )
-tidy(m) %>% filter(term == "distress") # -1.296828 (-2.057364 -0.5362924)
+tidy(m) %>% filter(term == "distress") %>% t()
+# term      "distress"     
+# estimate  "-1.359615"    
+# std.error "0.3875134"    
+# statistic "-3.508563"    
+# p.value   "0.0004571221" 
+# conf.low  "-2.119432"    
+# conf.high "-0.5997978"   
+# df        "3016"         
+# outcome   "SVI_no_nation"

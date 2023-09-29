@@ -1,10 +1,3 @@
-# labels for SVI items
-rel_imp_label        <- "Religion not imp."
-rel_person_label     <- "Not a religious person"
-nation_pride_label   <- "Not proud of nation"
-parents_proud_label  <- "Parents proud not goal"
-respect_author_label <- "Disrespect authority"
-
 # factor coding and ordering in one function from https://rdrr.io/github/svmiller/stevemisc/src/R/misc.R
 fct_reorg <- function(fac, ...) {
   dots <- unname(list(...))
@@ -15,10 +8,42 @@ fct_reorg <- function(fac, ...) {
   
 }
 
-# strict rounding
-round1 <- function(x, digits){format(round(x,digits), nsmall = digits, trim = TRUE)}
+# weighted mode function from: https://rdrr.io/github/marberts/smart/src/R/computations.R
+weighted_mode <- function(x, w = rep(1L, length(x)), na.rm = FALSE) { 
+  if (length(x) != length(w)) {
+    stop("'x' and 'w' must be the same length")
+  }
+  if (na.rm) {
+    if (anyNA(x) || anyNA(w)) { # nested if to prevent anyNA(w) getting called twice
+      keep <- !(is.na(x) | is.na(w))
+      x <- x[keep]
+      w <- w[keep]
+    }
+  } else if (anyNA(w)) {
+    return(x[0][NA]) # impossible to know mode if any weights are missing
+  }
+  ux <- unique(x)
+  if (!length(ux)) return(ux) # prevents max for returning -Inf
+  f <- as.factor(match(x, ux))
+  tab <- vapply(split(w, f), sum, numeric(1), USE.NAMES = FALSE)
+  is_mode <- tab == max(tab) # lines up with ux
+  if (anyNA(x)) {
+    na <- which(is.na(ux)) # single integer
+    modes <- which(is_mode)
+    cond <- na %in% modes || # mode is NA if any mode is NA
+      # or if the weight for any mode does not exceed the weight for the NA
+      # and the weight for the next largest weight
+      (length(ux) > 2 && tab[na] + max(tab[-c(modes[1], na)]) >= tab[modes[1]])
+    if (cond) return(x[0][NA])
+  }
+  if (sum(is_mode) > 1) warning("mode is not unique")
+  ux[is_mode]
+}
 
-# forest plots
+# clean rounding
+round1 <- function(x, digits){format(janitor::round_half_up(x,digits), nsmall = digits, trim = TRUE)}
+
+# coefficient plots for wvs vs. vic comparison
 forestplots <- function(mods, version, color, plotlabel, scale_lim, suppr_x, coef_of, xlabel = NA, digits = 1){
   if(version == "EVI"){
     
@@ -31,13 +56,13 @@ forestplots <- function(mods, version, color, plotlabel, scale_lim, suppr_x, coe
                                                                       "homosexuality",
                                                                       "abortion", 
                                                                       "divorce")))) %>% 
+
       mutate(outcome = fct_recode(outcome,
-                                  "EMANCIPATIVE VALUES"            = "EVI",
-                                  "Gender equality education"      = "equal_educ", 
-                                  "Acceptance homosexuality"       = "homosexuality",
-                                  "Acceptance abortion"            =  "abortion", 
-                                  "Acceptance divorce"             = "divorce")) %>% 
-      
+                                  "EMANCIPATIVE VALUES"             = "EVI",
+                                  !!as.symbol(equal_educ_label)    := "equal_educ",
+                                  !!as.symbol(homosexuality_label) := "homosexuality",
+                                  !!as.symbol(abortion_label)      := "abortion", 
+                                  !!as.symbol(divorce_label)       := "divorce")) %>% 
       ggplot() + 
       geom_errorbar(aes(x = outcome, 
                         ymin = conf.low, 
@@ -124,6 +149,7 @@ forestplots <- function(mods, version, color, plotlabel, scale_lim, suppr_x, coe
     # gluing together
     labels <- p2+p3
     p1 + labels
+    
   } else{
     
     # patch 1
@@ -138,12 +164,12 @@ forestplots <- function(mods, version, color, plotlabel, scale_lim, suppr_x, coe
                "parents_proud", 
                "respect_author")))) %>% 
       mutate(outcome = fct_recode(outcome,
-                                  "SECULAR VALUES"                        = "SVI",
-                                  !!as.symbol(parents_proud_label) := "parents_proud",
-                                  !!as.symbol(nation_pride_label) := "nation_pride",
+                                  "SECULAR VALUES"                   = "SVI",
+                                  !!as.symbol(parents_proud_label)  := "parents_proud",
+                                  !!as.symbol(nation_pride_label)   := "nation_pride",
                                   !!as.symbol(respect_author_label) := "respect_author",
-                                  !!as.symbol(rel_imp_label) := "rel_imp",
-                                  !!as.symbol(rel_person_label) := "rel_person")) %>% 
+                                  !!as.symbol(rel_imp_label)        := "rel_imp",
+                                  !!as.symbol(rel_person_label)     := "rel_person")) %>% 
       
       ggplot() + 
       geom_errorbar(aes(x = outcome, 
@@ -188,6 +214,7 @@ forestplots <- function(mods, version, color, plotlabel, scale_lim, suppr_x, coe
               text = element_text(family = "Segoe UI Semilight"),
               plot.title.position = "plot") -> p1
     }
+    
     # patch 2
     mods %>% 
       filter(term == coef_of) %>% 
@@ -237,7 +264,7 @@ forestplots <- function(mods, version, color, plotlabel, scale_lim, suppr_x, coe
   }
 }
 
-# forest plots for psychological distress analysis
+# coefficient plots for psychological distress analysis
 forestplots_psych <- function(mods, version, color, plotlabel, scale_lim, suppr_x, coef_of, xlabel = NA, digits = 1){
   if(version == "EVI"){
     
@@ -252,15 +279,16 @@ forestplots_psych <- function(mods, version, color, plotlabel, scale_lim, suppr_
                                                                       "homosexuality",
                                                                       "abortion", 
                                                                       "divorce")))) %>% 
+
       mutate(outcome = fct_recode(outcome,
-                                  "EMANCIPATIVE VALUES"            = "EVI",
-                                  "Gender equality education"      = "equal_educ",
-                                  "Gender equality politics"       = "equal_polit",
-                                  "Gender equality jobs"           = "equal_job",
-                                  "Acceptance homosexuality"       = "homosexuality",
-                                  "Acceptance abortion"            =  "abortion", 
-                                  "Acceptance divorce"             = "divorce")) %>% 
-      
+                                  "EMANCIPATIVE VALUES"             = "EVI",
+                                  !!as.symbol(equal_educ_label)    := "equal_educ",
+                                  !!as.symbol(equal_polit_label)   := "equal_polit",
+                                  !!as.symbol(equal_job_label)     := "equal_job",
+                                  !!as.symbol(homosexuality_label) := "homosexuality",
+                                  !!as.symbol(abortion_label)      := "abortion", 
+                                  !!as.symbol(divorce_label)       := "divorce")) %>% 
+
       ggplot() + 
       geom_errorbar(aes(x = outcome, 
                         ymin = conf.low, 
@@ -272,7 +300,7 @@ forestplots_psych <- function(mods, version, color, plotlabel, scale_lim, suppr_
                     col = color, 
                     position = position_dodge(0.7)) +
       geom_point(aes(y = estimate, 
-                     x = outcome, alpha = index, group = analysis#, pch = analysis
+                     x = outcome, alpha = index, group = analysis
       ), 
       pch = 18, 
       size = 3, col = color, position = position_dodge(0.7)) +
@@ -376,12 +404,12 @@ forestplots_psych <- function(mods, version, color, plotlabel, scale_lim, suppr_
                "parents_proud", 
                "respect_author")))) %>% 
       mutate(outcome = fct_recode(outcome,
-                                  "SECULAR VALUES"                        = "SVI",
-                                  !!as.symbol(parents_proud_label) := "parents_proud",
-                                  !!as.symbol(nation_pride_label) := "nation_pride",
+                                  "SECULAR VALUES"                   = "SVI",
+                                  !!as.symbol(parents_proud_label)  := "parents_proud",
+                                  !!as.symbol(nation_pride_label)   := "nation_pride",
                                   !!as.symbol(respect_author_label) := "respect_author",
-                                  !!as.symbol(rel_imp_label) := "rel_imp",
-                                  !!as.symbol(rel_person_label) := "rel_person")) %>% 
+                                  !!as.symbol(rel_imp_label)        := "rel_imp",
+                                  !!as.symbol(rel_person_label)     := "rel_person")) %>% 
       
       ggplot() + 
       geom_errorbar(aes(x = outcome, 
@@ -393,7 +421,7 @@ forestplots_psych <- function(mods, version, color, plotlabel, scale_lim, suppr_
                     lwd = 1, 
                     col = color,
                     position = position_dodge(0.7)) +
-      geom_point(aes(y = estimate, x = outcome, alpha = index, #pch = analysis,
+      geom_point(aes(y = estimate, x = outcome, alpha = index,
                      group = analysis
       ), 
       size = 3, 
@@ -440,6 +468,7 @@ forestplots_psych <- function(mods, version, color, plotlabel, scale_lim, suppr_
               legend.position = "bottom")  +
         guides(shape = guide_legend(override.aes = list(col = "black"), ncol = 1, reverse = TRUE)) 
     }
+    
     # patch 2
     mods %>% 
       filter(term == coef_of) %>% 
@@ -491,7 +520,7 @@ forestplots_psych <- function(mods, version, color, plotlabel, scale_lim, suppr_
   }
 }
 
-# violin plots
+# create violin plots
 violinplots <- function(data, weights, color, y, y_label, plotlabel){
   
   data <- data %>% 
@@ -528,8 +557,7 @@ violinplots <- function(data, weights, color, y, y_label, plotlabel){
 
 # prediction plot for value change depending on infections
 pred_intct_cases <- function(preds,data,version,color,y_label,plotlabel){
-  
-  #patch 1
+
   preds %>% 
     filter(outcome %in% version) %>% 
     mutate(outcome = ifelse(outcome == "EVI", "EVI", "SVI"),
@@ -560,7 +588,7 @@ pred_intct_cases <- function(preds,data,version,color,y_label,plotlabel){
   p1
 }
 
-# comparison plot over repeated surveys
+# plot difference estimates over repeated surveys
 timeplot <- function(data, version, plotlabel, color, scale_lim, suppr_y){
   
   if(version == "EVI"){
@@ -571,12 +599,13 @@ timeplot <- function(data, version, plotlabel, color, scale_lim, suppr_y){
                                                                   "homosexuality",
                                                                   "abortion", 
                                                                   "divorce"))) %>% 
+      
       mutate(outcome = fct_recode(outcome,
-                                  "EMANCIPATIVE VALUES"            = "EVI",
-                                  "Gender equality education"      = "equal_educ", 
-                                  "Acceptance homosexuality"       = "homosexuality",
-                                  "Acceptance abortion"            =  "abortion", 
-                                  "Acceptance divorce"             = "divorce")) %>% 
+                                  "EMANCIPATIVE VALUES"             = "EVI",
+                                  !!as.symbol(equal_educ_label)    := "equal_educ",
+                                  !!as.symbol(homosexuality_label) := "homosexuality",
+                                  !!as.symbol(abortion_label)      := "abortion", 
+                                  !!as.symbol(divorce_label)       := "divorce")) %>% 
       mutate(time = factor(time, ordered = TRUE, levels = c("WVS7", "VIC1", "VIC2")))
   } else{
     data <- data %>% filter(outcome %in% outcome_SVI) %>% 
@@ -589,7 +618,7 @@ timeplot <- function(data, version, plotlabel, color, scale_lim, suppr_y){
                "parents_proud", 
                "respect_author"))) %>% 
       mutate(outcome = fct_recode(outcome,
-                                  "SECULAR VALUES"                  = "SVI",
+                                  "SECULAR VALUES"                   = "SVI",
                                   !!as.symbol(parents_proud_label)  := "parents_proud",
                                   !!as.symbol(nation_pride_label)   := "nation_pride",
                                   !!as.symbol(respect_author_label) := "respect_author",
@@ -638,7 +667,7 @@ timeplot <- function(data, version, plotlabel, color, scale_lim, suppr_y){
   p
 }
 
-# summary statistics table
+# create summary statistics table
 create_summary_tab <- function(data, use_wgt = FALSE, wgt_var = NULL){
   
   tmp <- data %>%
@@ -760,7 +789,7 @@ create_summary_tab <- function(data, use_wgt = FALSE, wgt_var = NULL){
   return(tb)
 }
 
-# estimation of survey-wise post-stratification weights and (optionally) propensity weights
+# estimation of post-stratification weights and (optionally) propensity weights
 add_poststrat_wgts <- function(censusdata, 
                                sampledata,
                                add_iptw = FALSE){
@@ -843,36 +872,4 @@ add_poststrat_wgts <- function(censusdata,
   } else{
     return(sampledata)
   }
-}
-
-# weighted mode function from: https://rdrr.io/github/marberts/smart/src/R/computations.R
-weighted_mode <- function(x, w = rep(1L, length(x)), na.rm = FALSE) { 
-  if (length(x) != length(w)) {
-    stop("'x' and 'w' must be the same length")
-  }
-  if (na.rm) {
-    if (anyNA(x) || anyNA(w)) { # nested if to prevent anyNA(w) getting called twice
-      keep <- !(is.na(x) | is.na(w))
-      x <- x[keep]
-      w <- w[keep]
-    }
-  } else if (anyNA(w)) {
-    return(x[0][NA]) # impossible to know mode if any weights are missing
-  }
-  ux <- unique(x)
-  if (!length(ux)) return(ux) # prevents max for returning -Inf
-  f <- as.factor(match(x, ux))
-  tab <- vapply(split(w, f), sum, numeric(1), USE.NAMES = FALSE)
-  is_mode <- tab == max(tab) # lines up with ux
-  if (anyNA(x)) {
-    na <- which(is.na(ux)) # single integer
-    modes <- which(is_mode)
-    cond <- na %in% modes || # mode is NA if any mode is NA
-      # or if the weight for any mode does not exceed the weight for the NA
-      # and the weight for the next largest weight
-      (length(ux) > 2 && tab[na] + max(tab[-c(modes[1], na)]) >= tab[modes[1]])
-    if (cond) return(x[0][NA])
-  }
-  if (sum(is_mode) > 1) warning("mode is not unique")
-  ux[is_mode]
 }
