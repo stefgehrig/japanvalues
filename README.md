@@ -69,9 +69,9 @@ emergency_in_pref_VIC1 | Indicator for emergency status of prefecture at time of
 
 ### Getting the analysis code to run
 
-After cloning the repository, all analyses can be reproduced by running a single the R script. The script `R/run_analysis.R` imports all data sets and produces all results. Make sure the package versions on your machine are consistent with the versions indicated in the scrip. The original analysis was run using R v.4.3.1. All results (`.png` files and `.rds` files) are exported into the folder `/results`.
+After cloning the repository, all analyses can be reproduced by running a single the R script. The script `R/run_analysis.R` imports all data sets and produces all results. Make sure the package versions on your machine are consistent with the versions indicated in the script. The original analysis was run using R v.4.3.1. All results (`.png` files and `.rds` files) are exported into the folder `/results`.
 
 ### Compiling the Appendix
 
-The Appendix of the paper is written in RMarkdown, using the `bookdown` package. If the bibliography file is in place (`utils/references.bib`) and the data and results folders are filled with the required files, you can compile the Appendix by knitting `R/appendix.R`.
+The Appendix of the paper is written in RMarkdown, using the `bookdown` package. If the bibliography file is in place (`utils/references.bib`) and the data and results folders are filled with the required files, you can compile the Appendix by knitting `R/appendix.Rmd`.
 
