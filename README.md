@@ -4,6 +4,10 @@ In this repository, you can find all code and data to reproduce the statistical 
 
 *title*
 
+<p align="center">
+<img src="https://github.com/stefgehrig/japanvalues/blob/master/results/p_coeff_models1.png" width="600">
+</p>
+
 ### Data description
 
 In the subfolder `/data`, you can find four different files:
