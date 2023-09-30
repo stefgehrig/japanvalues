@@ -1,7 +1,7 @@
 ---
 title: |
   | Appendix for
-  | *"Values in crisis: Societal value change under existential insecurity"*
+  | *"Values in Crisis: Societal Value Change under Existential Insecurity"*
   |
 subtitle: ""
 author: Plamen Akaliyski, Naoko Taniguchi, Joonha Park, Stefan Gehrig, Raül Tormos
