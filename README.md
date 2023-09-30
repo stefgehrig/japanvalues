@@ -61,8 +61,8 @@ prefecture | Japanese prefecture
 townsize | Town size
 age_sq | Age (in years) squared
 age_group | Age (in years) discretized
-cum_infected_in_pref_VIC1 | Cumulative number of COVID-19 infections in prefecture at the time of VIC1
-cum_deaths_in_pref_VIC1 | Cumulative number of COVID-19 deaths in prefecture at the time of VIC1
+cum_infected_in_pref_VIC1 | Cumulative number of COVID-19 infections in prefecture at the time of VIC1 per 100,000
+cum_deaths_in_pref_VIC1 | Cumulative number of COVID-19 deaths in prefecture at the time of VIC1 per 100,000
 emergency_in_pref_VIC1 | Indicator for emergency status of prefecture at time of VIC1
 
 ### Getting the analysis code to run
