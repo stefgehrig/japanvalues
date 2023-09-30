@@ -1,6 +1,9 @@
 ---
-title: "Appendix for"
-subtitle: "*title*"
+title: |
+  | Appendix for
+  | *"Values in crisis: Societal value change under existential insecurity"*
+  |
+subtitle: ""
 author: Plamen Akaliyski, Naoko Taniguchi, Joonha Park, Stefan Gehrig, Raül Tormos
 documentclass: article
 output:

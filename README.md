@@ -1,8 +1,6 @@
 # japanvalues
 
-In this repository, you can find all code and data to reproduce the statistical results presented in the article:
-
-*title*
+In this repository, you can find all code and data to reproduce the statistical results presented in the article **"Values in crisis: Societal value change under existential insecurity"**.
 
 ### Data description
 
