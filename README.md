@@ -2,6 +2,10 @@
 
 In this repository, you can find all code and data to reproduce the statistical results presented in the article **"Values in crisis: Societal value change under existential insecurity"**.
 
+<p align="left">
+<img src="results/p_coeff_models1.png" width="800">
+</p>
+
 ### Data description
 
 In the subfolder `/data`, you can find four different files:
@@ -25,7 +29,7 @@ subject_id | Unique subject ID, including identifier of survey (WVS for World Va
 wave | Survey wave (WVS7, VIC1 or VIC2)
 participation | All survey waves the respondent participated in (W0 refers to WVS7, W1 to VIC1 and W2 to VIC2)
 EVI | Emancipative Values Index (based on six items)
-EVI_reduced | short version of the Emancipative Values Index (based on four items)
+EVI_reduced | Short version of the Emancipative Values Index (based on four items)
 equal_polit | Item: Gender equality politics (scaled between 0 and 100)
 equal_job | Item: Gender equality jobs (scaled between 0 and 100)
 equal_educ | Item: Gender equality education (scaled between 0 and 100)
@@ -63,9 +67,9 @@ emergency_in_pref_VIC1 | Indicator for emergency status of prefecture at time of
 
 ### Getting the analysis code to run
 
-After cloning the repository, all analyses can be reproduced by running a single the R script. The script `R/run_analysis.R` imports all data sets and produces all results. Make sure the package versions on your machine are consistent with the versions indicated in the scrip. The original analysis was run using R v.4.3.1. All results (`.png` files and `.rds` files) are exported into the folder `/results`.
+After cloning the repository, all analyses can be reproduced by running a single the R script. The script `R/run_analysis.R` imports all data sets and produces all results. Make sure the package versions on your machine are consistent with the versions indicated in the script. The original analysis was run using R v.4.3.1. All results (`.png` files and `.rds` files) are exported into the folder `/results`.
 
 ### Compiling the Appendix
 
-The Appendix of the paper is written in RMarkdown, using the `bookdown` package. If the bibliography file is in place (`utils/references.bib`) and the data and results folders are filled with the required files, you can compile the Appendix by knitting `R/appendix.R`.
+The Appendix of the paper is written in RMarkdown, using the `bookdown` package. If the bibliography file is in place (`utils/references.bib`) and the data and results folders are filled with the required files, you can compile the Appendix by knitting `R/appendix.Rmd`.
 
