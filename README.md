@@ -1,11 +1,18 @@
 # japanvalues
 
-In this repository, you can find all code and data to reproduce the statistical results presented in the article **"Values in Crisis: Societal Value Change under Existential Insecurity"**.
+In this repository, you can find all code and data to reproduce the statistical results presented in the article 
+
+___
+Akaliyski, P., Taniguchi, N., Park, J., Gehrig, S., & Tormos, R. (2023). Values in Crisis: Societal Value
+Change under Existential Insecurity. *Social Indicators Research*. https://doi.org/10.1007/s11205-023-03226-2
+___
+
 
 <p align="left">
-<img src="results/p_coeff_models1.png" width="800">
+    <img src="results/p_coeff_models1.png" width="800">
 </p>
 
+  
 ### Data description
 
 In the subfolder `/data`, you can find four different files:
